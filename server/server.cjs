@@ -19,7 +19,7 @@ const {
 const OpenAI = require("openai");
 
 const app = express();
-const port = 5000;
+const port = process.env.PORT || 5000;
 
 app.use(cors());
 app.use(express.json());
@@ -147,6 +147,10 @@ app.post('/upload', upload.single('file'), (req, res) => {
 });
 
 // ✅ Start backend server
+app.get('/', (req, res) => {
+  res.send('✅ RamRoot backend is running successfully.');
+});
+
 app.listen(port, () => {
   console.log(`✅ RamRoot backend running on http://localhost:${port}`);
 });
