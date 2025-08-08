@@ -1,0 +1,29 @@
+.file-browser {
+  padding: 2rem;
+  background: #1e1e1e;
+  color: white;
+  font-family: monospace;
+}
+
+.file-list ul {
+  list-style-type: none;
+  padding: 0;
+}
+
+.file-list li {
+  cursor: pointer;
+  margin: 4px 0;
+  color: #66d9ef;
+}
+
+.file-list li:hover {
+  text-decoration: underline;
+}
+
+.file-content {
+  margin-top: 2rem;
+  background: #2d2d2d;
+  padding: 1rem;
+  border-radius: 8px;
+  white-space: pre-wrap;
+}
