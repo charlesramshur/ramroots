@@ -2,6 +2,9 @@
 import React, { useState } from 'react';
 import './Chat.css';
 
+// Use env var so it works locally AND on Vercel
+const API = import.meta.env.VITE_API_URL;
+
 function Chat() {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
@@ -14,7 +17,7 @@ function Chat() {
     setInput('');
 
     try {
-      const response = await fetch('http://localhost:5000/api/ask', {
+      const response = await fetch(`${API}/api/ask`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ prompt: input }),
@@ -22,11 +25,13 @@ function Chat() {
 
       const data = await response.json();
       const reply = data.reply || '⚠️ No reply received.';
-
       setMessages(prev => [...prev, { from: 'RamRoot', text: reply }]);
     } catch (err) {
-      setMessages(prev => [...prev, { from: 'RamRoot', text: '⚠️ Error reaching server.' }]);
       console.error(err);
+      setMessages(prev => [
+        ...prev,
+        { from: 'RamRoot', text: '⚠️ Error reaching server.' },
+      ]);
     }
   };
 

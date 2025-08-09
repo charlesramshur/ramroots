@@ -1,52 +1,49 @@
-import React, { useEffect, useState } from 'react';
+// src/components/MemoryPanel.jsx
+import React, { useState, useEffect } from 'react';
+
+// Use env var so it works locally AND on Vercel
+const API = import.meta.env.VITE_API_URL;
 
 function MemoryPanel() {
-  const [memory, setMemory] = useState(null);
-  const [searchTerm, setSearchTerm] = useState('');
+  const [memory, setMemory] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    fetch('http://localhost:5000/api/memory')
-      .then((res) => res.json())
-      .then((data) => setMemory(data))
-      .catch((err) => console.error('Error loading memory:', err));
-  }, []);
-
-  const filterItems = (items) => {
-    if (!items) return [];
-    return items.filter((item) =>
-      item.text.toLowerCase().includes(searchTerm.toLowerCase())
-    );
+  const fetchMemory = async () => {
+    try {
+      const res = await fetch(`${API}/api/memory`);
+      const data = await res.json();
+      setMemory(data || []);
+    } catch (err) {
+      console.error('Error fetching memory:', err);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const renderSection = (title, items) => (
-    <div className="mb-6">
-      <h2 className="text-xl font-semibold mb-2">{title}</h2>
-      <ul className="list-disc list-inside">
-        {filterItems(items).map((item, i) => (
-          <li key={i} className="text-gray-700">{item.text}</li>
-        ))}
-      </ul>
-    </div>
-  );
+  const clearMemory = async () => {
+    try {
+      await fetch(`${API}/api/memory`, { method: 'DELETE' });
+      setMemory([]);
+    } catch (err) {
+      console.error('Error clearing memory:', err);
+    }
+  };
 
-  if (!memory) return <div className="p-4 text-lg">Loading memory...</div>;
+  useEffect(() => {
+    fetchMemory();
+  }, []);
+
+  if (loading) return <p>Loading memory...</p>;
 
   return (
-    <div className="p-4 max-w-3xl mx-auto">
-      <h1 className="text-2xl font-bold mb-4">🧠 RamRoot Memory Panel</h1>
-
-      <input
-        type="text"
-        placeholder="Search memory..."
-        value={searchTerm}
-        onChange={(e) => setSearchTerm(e.target.value)}
-        className="w-full p-2 mb-6 border border-gray-300 rounded"
-      />
-
-      {renderSection('Goals', memory.goals)}
-      {renderSection('Features', memory.features)}
-      {renderSection('Notes', memory.notes)}
-      {renderSection('Tasks', memory.tasks)}
+    <div className="memory-panel">
+      <h2>Memory</h2>
+      <button onClick={clearMemory}>Clear Memory</button>
+      <ul>
+        {memory.map((item, i) => (
+          <li key={i}>{item}</li>
+        ))}
+      </ul>
     </div>
   );
 }
