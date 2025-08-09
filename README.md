@@ -1,70 +1,42 @@
-# Getting Started with Create React App
+# RamRoots
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+## Session Status
+<!-- STATUS-START -->
+**Repo:** charlesramshur/ramroots  
+**Branch:** main  
 
-## Available Scripts
+| Service | Status | When | Link |
+|---|---|---|---|
+| GitHub | Commit `26124a9` — Build: add lightningcss and @tailwindcss/node for Tailwind v4 on Vercel<br/><sub>Actions: _No recent runs_</sub> | 8/8/2025, 8:16:39 PM | [View](https://github.com/charlesramshur/ramroots/commit/26124a95ec1d25100e0e5bb130c8bc7d8a780f7a) |
+| Vercel | READY | 8/8/2025, 9:19:28 PM | [Open](https://ramroots-8xx6m514h-charles-ramshurs-projects.vercel.app) |
+| Render (ramroots) | live |  |  |
+<!-- STATUS-END -->
 
-In the project directory, you can run:
+## Quick Notes (manual)
+Use this space for anything you want to tell me before we start working in a new session.  
+For example:
+- Current goal
+- Issues you’ve noticed
+- Tabs you have open (Vercel, Render, GitHub, etc.)
 
-### `npm start`
+## About RamRoots
+RamRoots is a personal AI super-app built to act as a:
+- **Personal assistant** (organizer, researcher, communicator)
+- **Engineer/developer** (can help build and maintain itself)
+- **Automation hub** (connects with external services and APIs)
+- **Permanent memory store** (recalls past conversations and files)
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
+The project is under active development and integrates:
+- Frontend: **React + Vite + TailwindCSS**
+- Backend: **Node.js/Express**
+- Custom memory manager
+- API endpoints for AI tools and file handling
 
-The page will reload when you make changes.\
-You may also see any lint errors in the console.
+## How This README Works
+This file will be updated automatically:
+1. **Status section** (`<!-- STATUS-START -->` … `<!-- STATUS-END -->`) will refresh with live deployment and build info.
+2. You can manually update the “Quick Notes” before sending me the ZIP so I instantly know what’s happening.
 
-### `npm test`
+---
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
-
-### `npm run build`
-
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
-
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
-
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
-
-### `npm run eject`
-
-**Note: this is a one-way operation. Once you `eject`, you can't go back!**
-
-If you aren't satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
-
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you're on your own.
-
-You don't have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn't feel obligated to use this feature. However we understand that this tool wouldn't be useful if you couldn't customize it when you are ready for it.
-
-## Learn More
-
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
-
-To learn React, check out the [React documentation](https://reactjs.org/).
-
-### Code Splitting
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/code-splitting](https://facebook.github.io/create-react-app/docs/code-splitting)
-
-### Analyzing the Bundle Size
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
-
-### Making a Progressive Web App
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
-
-### Advanced Configuration
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
-
-### Deployment
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/deployment](https://facebook.github.io/create-react-app/docs/deployment)
-
-### `npm run build` fails to minify
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+© 2025 RamRoots Project – Built and maintained by Charles Alan Ramshur
