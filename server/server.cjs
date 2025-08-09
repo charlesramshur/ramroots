@@ -146,6 +146,25 @@ app.post('/upload', upload.single('file'), (req, res) => {
   res.json({ success: true, name: req.file.originalname });
 });
 
+// =================== Health check route ===================
+app.get('/api/health', (req, res) => {
+  res.json({
+    status: 'ok',
+    node: process.version,
+    uptime: process.uptime(),
+    flags: {
+      enableRealtime: process.env.ENABLE_REALTIME || false,
+      enableSelfOps: process.env.ENABLE_SELFOPS || false
+    },
+    env: {
+      OPENAI_API_KEY: process.env.OPENAI_API_KEY ? 'set' : 'missing',
+      VERCEL_TOKEN: process.env.VERCEL_TOKEN ? 'set' : 'missing',
+      RENDER_API_KEY: process.env.RENDER_API_KEY ? 'set' : 'missing',
+      TAVILY_API_KEY: process.env.TAVILY_API_KEY ? 'set' : 'missing'
+    }
+  });
+});
+
 // ✅ Start backend server
 app.get('/', (req, res) => {
   res.send('✅ RamRoot backend is running successfully.');
