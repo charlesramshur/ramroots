@@ -7,11 +7,11 @@
 
 | Service | Status | When | Link |
 |---|---|---|---|
-| GitHub | Commit `4de3ca3` — ci: run README updater on push | 2025-08-10 20:07 UTC | [View](https://github.com/charlesramshur/ramroots/commit/4de3ca312a460471fb0bf9851970309047115bdf) |
-| Vercel | UNKNOWN | — | — |
-| Render (api) | UNKNOWN<br/><sub>Commit `—`</sub> | — | [Dashboard](https://dashboard.render.com/web/srv-d2b7c5fdiees73eg25d0) |
+| GitHub | Commit `7194858` — ci: add Vercel teamId + fix Render dashboard link | 2025-08-10 20:30 UTC | [View](https://github.com/charlesramshur/ramroots/commit/719485861401a1df1ea7ca5a4694dde7c4a9a5a1) |
+| Vercel | ERR 400 | — | — |
+| Render (api) | UNKNOWN<br/><sub>Commit `—`</sub> | — | [Dashboard](https://dashboard.render.com/services/srv-d2b7c5fdiees73eg25d0) |
 
-_Last updated: 2025-08-10 20:07 UTC_
+_Last updated: 2025-08-10 20:30 UTC_
 
 <!-- STATUS-END -->`) will refresh with live deployment and build info.
 2. You can manually update the “Quick Notes” before sending me the ZIP so I instantly know what’s happening.
