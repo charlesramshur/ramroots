@@ -2,16 +2,16 @@
 
 ## Session Status
 <!-- STATUS-START -->
-**Repo:** undefined
+**Repo:** charlesramshur/ramroots
 **Branch:** main
 
 | Service | Status | When | Link |
 |---|---|---|---|
-| GitHub | Commit `—` — chore: auto-update README status | 2025-08-10 15:37 UTC | [View](https://github.com/undefined/commit/undefined) |
+| GitHub | Commit `5c6f8c5` — chore: refresh README status | 2025-08-10 16:07 UTC | [View](https://github.com/charlesramshur/ramroots/commit/5c6f8c58450447ed1a62cf5459e40deba6bc98a3) |
 | Vercel | UNKNOWN | — | — |
-| Render (api) | ERROR<br/><sub>Commit `—`</sub> | — | — |
+| Render (api) | UNKNOWN<br/><sub>Commit `—`</sub> | — | [Dashboard](https://dashboard.render.com/web/srv-d2b7c5fdiees73eg25d0) |
 
-_Last updated: 2025-08-10 16:05 UTC_
+_Last updated: 2025-08-10 16:49 UTC_
 
 <!-- STATUS-END -->`) will refresh with live deployment and build info.
 2. You can manually update the “Quick Notes” before sending me the ZIP so I instantly know what’s happening.
