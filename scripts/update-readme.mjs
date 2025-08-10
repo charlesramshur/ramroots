@@ -4,18 +4,25 @@ const fmt = (d) =>
   new Date(d).toISOString().replace("T", " ").slice(0, 16) + " UTC";
 
 async function vercel() {
-  const r = await fetch(
-    `https://api.vercel.com/v13/deployments?projectId=${process.env.VERCEL_PROJECT_ID}&limit=1`,
-    { headers: { Authorization: `Bearer ${process.env.VERCEL_TOKEN}` } }
-  );
+  const u = new URL("https://api.vercel.com/v13/deployments");
+  u.searchParams.set("projectId", process.env.VERCEL_PROJECT_ID);
+  u.searchParams.set("limit", "1");
+  if (process.env.VERCEL_ORG_ID) u.searchParams.set("teamId", process.env.VERCEL_ORG_ID);
+
+  const r = await fetch(u, {
+    headers: { Authorization: `Bearer ${process.env.VERCEL_TOKEN}` },
+  });
+  if (!r.ok) return { status: `ERR ${r.status}`, when: "—", url: "" };
+
   const j = await r.json();
   const d = j.deployments?.[0] || {};
   return {
-    status: d.readyState || "UNKNOWN",
+    status: (d.readyState || "UNKNOWN").toUpperCase(),
     when: d.createdAt ? fmt(d.createdAt) : "—",
     url: d.url ? `https://${d.url}` : "",
   };
 }
+
 
 async function render() {
   const srv = process.env.RENDER_SERVICE_ID;
@@ -28,7 +35,8 @@ async function render() {
     status: s?.service?.status || s?.status || "UNKNOWN",
     when: d?.createdAt ? fmt(d.createdAt) : "—",
     sha: d?.commit?.id ? d.commit.id.slice(0, 7) : (s?.deploy?.commitId ? s.deploy.commitId.slice(0, 7) : "—"),
-    dash: `https://dashboard.render.com/web/${srv}`,
+    dash: `https://dashboard.render.com/services/${srv}`,
+
   };
 }
 
