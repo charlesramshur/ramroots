@@ -2,39 +2,18 @@
 
 ## Session Status
 <!-- STATUS-START -->
-**Repo:** charlesramshur/ramroots  
-**Branch:** main  
+**Repo:** charlesramshur/ramroots
+**Branch:** main
 
 | Service | Status | When | Link |
 |---|---|---|---|
-| GitHub | Commit `1db64ca` — README: Render status showing live<br/><sub>Actions: _No recent runs_</sub> | 8/9/2025, 2:18:43 PM | [View](https://github.com/charlesramshur/ramroots/commit/1db64cabe3446eb8507cb486b287eb8863ed87c5) |
-| Vercel | READY | 8/9/2025, 2:18:52 PM | [Open](https://ramroots-labksv55k-charles-ramshurs-projects.vercel.app) |
-| Render (ramroots) | live<br/><sub>Commit 1db64ca by charlesramshur at 8/9/2025, 2:18:43 PM</sub> | 8/9/2025, 2:21:17 PM | [Open](https://dashboard.render.com/web/srv-d2b7c5fdiees73eg25d0?deployId=dep-d2bpu6ruibrs73cb1vj0) |
-<!-- STATUS-END -->
+| GitHub | Commit `c8a9ebf` — ci: run external script for README status | 2025-08-10 14:50 UTC | [View](https://github.com/charlesramshur/ramroots/commit/c8a9ebfafade1d0357e6455967b892d41364d1e8) |
+| Vercel | UNKNOWN | — | — |
+| Render (api) | UNKNOWN<br/><sub>Commit `—`</sub> | — | [Dashboard](https://dashboard.render.com/web/srv-d2b7c5fdiees73eg25d0) |
 
-## Quick Notes (manual)
-Use this space for anything you want to tell me before we start working in a new session.  
-For example:
-- Current goal
-- Issues you’ve noticed
-- Tabs you have open (Vercel, Render, GitHub, etc.)
+_Last updated: 2025-08-10 14:51 UTC_
 
-## About RamRoots
-RamRoots is a personal AI super-app built to act as a:
-- **Personal assistant** (organizer, researcher, communicator)
-- **Engineer/developer** (can help build and maintain itself)
-- **Automation hub** (connects with external services and APIs)
-- **Permanent memory store** (recalls past conversations and files)
-
-The project is under active development and integrates:
-- Frontend: **React + Vite + TailwindCSS**
-- Backend: **Node.js/Express**
-- Custom memory manager
-- API endpoints for AI tools and file handling
-
-## How This README Works
-This file will be updated automatically:
-1. **Status section** (`<!-- STATUS-START -->` … `<!-- STATUS-END -->`) will refresh with live deployment and build info.
+<!-- STATUS-END -->`) will refresh with live deployment and build info.
 2. You can manually update the “Quick Notes” before sending me the ZIP so I instantly know what’s happening.
 ---
 
