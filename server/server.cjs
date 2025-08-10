@@ -145,6 +145,10 @@ app.post('/upload', upload.single('file'), (req, res) => {
   fs.renameSync(tempPath, finalPath);
   res.json({ success: true, name: req.file.originalname });
 });
+// Health check
+app.get('/api/health', (req, res) => {
+  res.status(200).json({ status: 'ok', time: new Date().toISOString() });
+});
 
 // ✅ Start backend server
 app.get('/', (req, res) => {
