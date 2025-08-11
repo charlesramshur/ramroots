@@ -4,7 +4,8 @@ const fmt = (d) =>
   new Date(d).toISOString().replace("T", " ").slice(0, 16) + " UTC";
 
 async function vercel() {
-  const u = new URL("https://api.vercel.com/v13/deployments");
+  const u = new URL("https://api.vercel.com/v6/deployments");
+
   if (process.env.VERCEL_PROJECT_NAME) u.searchParams.set("app", process.env.VERCEL_PROJECT_NAME);
   else u.searchParams.set("projectId", process.env.VERCEL_PROJECT_ID);
   u.searchParams.set("limit", "1");
