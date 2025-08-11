@@ -32,37 +32,34 @@ async function render() {
   const id = process.env.RENDER_SERVICE_ID;
   const headers = { Authorization: `Bearer ${process.env.RENDER_API_KEY}` };
 
+  // Get service (for dashboard link)
   const sRes = await fetch(`https://api.render.com/v1/services/${id}`, { headers });
-  if (!sRes.ok) {
-    console.log("RENDER_ERROR service:", sRes.status, await sRes.text());
-    return { status: `ERR ${sRes.status}`, when: "—", sha: "—", dash: `https://dashboard.render.com/services/${id}` };
-  }
-  const sJson = await sRes.json();
-  console.log("RENDER_DEBUG service keys:", Object.keys(sJson || {}));
+  const sJson = sRes.ok ? await sRes.json() : null;
+  const dash = sJson?.dashboardUrl || `https://dashboard.render.com/services/${id}`;
 
+  // Get latest deploy (API can return: array of deploys, {deploys: [...]}, or [{deploy, cursor}])
   const dRes = await fetch(`https://api.render.com/v1/services/${id}/deploys?limit=1`, { headers });
-  if (!dRes.ok) {
-    console.log("RENDER_ERROR deploys:", dRes.status, await dRes.text());
-    return { status: `ERR ${dRes.status}`, when: "—", sha: "—", dash: `https://dashboard.render.com/services/${id}` };
-  }
-  const arr = await dRes.json();
-  console.log("RENDER_DEBUG deploys length:", Array.isArray(arr) ? arr.length : "not-array");
+  if (!dRes.ok) return { status: `ERR ${dRes.status}`, when: "—", sha: "—", dash };
 
-  const d = Array.isArray(arr) && arr[0] ? arr[0] : null;
-  if (d) console.log("RENDER_DEBUG deploy keys:", Object.keys(d));
+  const raw = await dRes.json();
+  let item = null;
+  if (Array.isArray(raw)) item = raw[0];
+  else if (Array.isArray(raw.deploys)) item = raw.deploys[0];
+  else if (raw.deploy) item = raw.deploy;
+  else if (Array.isArray(raw) && raw[0]?.deploy) item = raw[0].deploy;
 
-  const status =
-    (d && d.status) ||
-    (sJson && (sJson.status || sJson.service?.status)) ||
-    "UNKNOWN";
+  const dep = item?.deploy ?? item ?? null;
 
-  const when = d?.finishedAt || d?.createdAt ? fmt(d.finishedAt || d.createdAt) : "—";
+  const status = String(dep?.status || dep?.state || "UNKNOWN").toUpperCase();
+  const whenTs = dep?.finishedAt || dep?.updatedAt || dep?.createdAt;
+  const when = whenTs ? fmt(whenTs) : "—";
   const sha =
-    d?.commitId ? d.commitId.slice(0, 7) :
-    d?.commit?.id ? d.commit.id.slice(0, 7) : "—";
+    dep?.commitId ? dep.commitId.slice(0, 7) :
+    dep?.commit?.id ? dep.commit.id.slice(0, 7) : "—";
 
-  return { status: String(status).toUpperCase(), when, sha, dash: `https://dashboard.render.com/services/${id}` };
+  return { status, when, sha, dash };
 }
+
 
 
 
