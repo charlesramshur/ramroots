@@ -32,21 +32,26 @@ async function render() {
   const id = process.env.RENDER_SERVICE_ID;
   const headers = { Authorization: `Bearer ${process.env.RENDER_API_KEY}` };
 
+  // fetch service (for live status fallback)
+  const sRes = await fetch(`https://api.render.com/v1/services/${id}`, { headers });
+  const sJson = sRes.ok ? await sRes.json() : null;
+
   // latest deploy
-  const r = await fetch(`https://api.render.com/v1/services/${id}/deploys?limit=1`, { headers });
-  if (!r.ok) return { status: `ERR ${r.status}`, when: "—", sha: "—", dash: `https://dashboard.render.com/services/${id}` };
+  const dRes = await fetch(`https://api.render.com/v1/services/${id}/deploys?limit=1`, { headers });
+  const arr = dRes.ok ? await dRes.json() : [];
+  const d = Array.isArray(arr) ? arr[0] : null;
 
-  const arr = await r.json();
-  const d = Array.isArray(arr) && arr[0] ? arr[0] : null;
+  const status =
+    (d && d.status) ||
+    (sJson && (sJson.status || sJson.service?.status)) ||
+    "UNKNOWN";
 
-  return {
-    status: (d?.status || "UNKNOWN").toUpperCase(),
-    when: d?.finishedAt || d?.createdAt ? fmt(d.finishedAt || d.createdAt) : "—",
-    sha: d?.commitId
-      ? d.commitId.slice(0,7)
-      : (d?.commit?.id ? d.commit.id.slice(0,7) : "—"),
-    dash: `https://dashboard.render.com/services/${id}`,
-  };
+  const when = d?.finishedAt || d?.createdAt ? fmt(d.finishedAt || d.createdAt) : "—";
+  const sha =
+    d?.commitId ? d.commitId.slice(0, 7) :
+    d?.commit?.id ? d.commit.id.slice(0, 7) : "—";
+
+  return { status: status.toString().toUpperCase(), when, sha, dash: `https://dashboard.render.com/services/${id}` };
 }
 
 
