@@ -7,11 +7,11 @@
 
 | Service | Status | When | Link |
 |---|---|---|---|
-| GitHub | Commit `07a5af9` — chore: auto-update README status | 2025-08-11 02:36 UTC | [View](https://github.com/charlesramshur/ramroots/commit/07a5af96cb7827fdd85209e63f5f4a79d9dd2da8) |
+| GitHub | Commit `dc9e279` — ci: query Vercel by app name | 2025-08-11 03:05 UTC | [View](https://github.com/charlesramshur/ramroots/commit/dc9e279cbc45e2ada97d07abbe8edb0029938852) |
 | Vercel | ERR 400 | — | — |
 | Render (api) | UNKNOWN<br/><sub>Commit `—`</sub> | — | [Dashboard](https://dashboard.render.com/services/srv-d2b7c5fdiees73eg25d0) |
 
-_Last updated: 2025-08-11 02:47 UTC_
+_Last updated: 2025-08-11 03:05 UTC_
 
 <!-- STATUS-END -->`) will refresh with live deployment and build info.
 2. You can manually update the “Quick Notes” before sending me the ZIP so I instantly know what’s happening.
