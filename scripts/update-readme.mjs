@@ -31,18 +31,29 @@ async function vercel() {
 async function render() {
   const srv = process.env.RENDER_SERVICE_ID;
   const headers = { Authorization: `Bearer ${process.env.RENDER_API_KEY}` };
-  const r1 = await fetch(`https://api.render.com/v1/services/${srv}`, { headers });
-  const s = await r1.json();
-  const r2 = await fetch(`https://api.render.com/v1/services/${srv}/deploys?limit=1`, { headers });
-  const d = (await r2.json())?.[0] || {};
-  return {
-    status: s?.service?.status || s?.status || "UNKNOWN",
-    when: d?.createdAt ? fmt(d.createdAt) : "—",
-    sha: d?.commit?.id ? d.commit.id.slice(0, 7) : (s?.deploy?.commitId ? s.deploy.commitId.slice(0, 7) : "—"),
-    dash: `https://dashboard.render.com/services/${srv}`,
 
+  const r1 = await fetch(`https://api.render.com/v1/services/${srv}`, { headers });
+  if (!r1.ok) {
+    console.log("RENDER_ERROR service:", r1.status, await r1.text());
+    throw new Error(`Render service ${r1.status}`);
+  }
+  const s = await r1.json();
+
+  const r2 = await fetch(`https://api.render.com/v1/services/${srv}/deploys?limit=1`, { headers });
+  if (!r2.ok) {
+    console.log("RENDER_ERROR deploys:", r2.status, await r2.text());
+    throw new Error(`Render deploys ${r2.status}`);
+  }
+  const d = (await r2.json())?.[0] || {};
+
+  return {
+    status: s?.status || s?.service?.status || "UNKNOWN",
+    when: d?.finishedAt || d?.createdAt ? fmt(d.finishedAt || d.createdAt) : "—",
+    sha: d?.commit?.id ? d.commit.id.slice(0, 7) : "—",
+    dash: `https://dashboard.render.com/services/${srv}`,
   };
 }
+
 
 async function github() {
   // These envs are provided by Actions
