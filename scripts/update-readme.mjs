@@ -10,7 +10,11 @@ async function vercel() {
   u.searchParams.set("limit", "1");
 
   const r = await fetch(u, { headers: { Authorization: `Bearer ${process.env.VERCEL_TOKEN}` } });
-  if (!r.ok) return { status: `ERR ${r.status}`, when: "—", url: "" };
+  if (!r.ok) {
+  const txt = await r.text();
+  console.log("VERCEL_ERROR:", r.status, txt);
+  throw new Error(`Vercel API ${r.status}`);
+}
 
   const j = await r.json();
   const d = j.deployments?.[0] || {};
