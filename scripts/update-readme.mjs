@@ -32,14 +32,24 @@ async function render() {
   const id = process.env.RENDER_SERVICE_ID;
   const headers = { Authorization: `Bearer ${process.env.RENDER_API_KEY}` };
 
-  // fetch service (for live status fallback)
   const sRes = await fetch(`https://api.render.com/v1/services/${id}`, { headers });
-  const sJson = sRes.ok ? await sRes.json() : null;
+  if (!sRes.ok) {
+    console.log("RENDER_ERROR service:", sRes.status, await sRes.text());
+    return { status: `ERR ${sRes.status}`, when: "—", sha: "—", dash: `https://dashboard.render.com/services/${id}` };
+  }
+  const sJson = await sRes.json();
+  console.log("RENDER_DEBUG service keys:", Object.keys(sJson || {}));
 
-  // latest deploy
   const dRes = await fetch(`https://api.render.com/v1/services/${id}/deploys?limit=1`, { headers });
-  const arr = dRes.ok ? await dRes.json() : [];
-  const d = Array.isArray(arr) ? arr[0] : null;
+  if (!dRes.ok) {
+    console.log("RENDER_ERROR deploys:", dRes.status, await dRes.text());
+    return { status: `ERR ${dRes.status}`, when: "—", sha: "—", dash: `https://dashboard.render.com/services/${id}` };
+  }
+  const arr = await dRes.json();
+  console.log("RENDER_DEBUG deploys length:", Array.isArray(arr) ? arr.length : "not-array");
+
+  const d = Array.isArray(arr) && arr[0] ? arr[0] : null;
+  if (d) console.log("RENDER_DEBUG deploy keys:", Object.keys(d));
 
   const status =
     (d && d.status) ||
@@ -51,8 +61,9 @@ async function render() {
     d?.commitId ? d.commitId.slice(0, 7) :
     d?.commit?.id ? d.commit.id.slice(0, 7) : "—";
 
-  return { status: status.toString().toUpperCase(), when, sha, dash: `https://dashboard.render.com/services/${id}` };
+  return { status: String(status).toUpperCase(), when, sha, dash: `https://dashboard.render.com/services/${id}` };
 }
+
 
 
 async function github() {
