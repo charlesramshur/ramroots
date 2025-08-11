@@ -29,28 +29,23 @@ async function vercel() {
 
 
 async function render() {
-  const srv = process.env.RENDER_SERVICE_ID;
+  const id = process.env.RENDER_SERVICE_ID;
   const headers = { Authorization: `Bearer ${process.env.RENDER_API_KEY}` };
 
-  const r1 = await fetch(`https://api.render.com/v1/services/${srv}`, { headers });
-  if (!r1.ok) {
-    console.log("RENDER_ERROR service:", r1.status, await r1.text());
-    throw new Error(`Render service ${r1.status}`);
-  }
-  const s = await r1.json();
+  // latest deploy
+  const r = await fetch(`https://api.render.com/v1/services/${id}/deploys?limit=1`, { headers });
+  if (!r.ok) return { status: `ERR ${r.status}`, when: "—", sha: "—", dash: `https://dashboard.render.com/services/${id}` };
 
-  const r2 = await fetch(`https://api.render.com/v1/services/${srv}/deploys?limit=1`, { headers });
-  if (!r2.ok) {
-    console.log("RENDER_ERROR deploys:", r2.status, await r2.text());
-    throw new Error(`Render deploys ${r2.status}`);
-  }
-  const d = (await r2.json())?.[0] || {};
+  const arr = await r.json();
+  const d = Array.isArray(arr) && arr[0] ? arr[0] : null;
 
   return {
-    status: s?.status || s?.service?.status || "UNKNOWN",
+    status: (d?.status || "UNKNOWN").toUpperCase(),
     when: d?.finishedAt || d?.createdAt ? fmt(d.finishedAt || d.createdAt) : "—",
-    sha: d?.commit?.id ? d.commit.id.slice(0, 7) : "—",
-    dash: `https://dashboard.render.com/services/${srv}`,
+    sha: d?.commitId
+      ? d.commitId.slice(0,7)
+      : (d?.commit?.id ? d.commit.id.slice(0,7) : "—"),
+    dash: `https://dashboard.render.com/services/${id}`,
   };
 }
 
