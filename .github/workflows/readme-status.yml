@@ -3,9 +3,16 @@ name: Update README Status
 on:
   push:
     branches: [main]
+    paths-ignore:
+      - 'README.md'        # the bot’s README commit won't retrigger the job
   schedule:
-    - cron: "*/30 * * * *"
-  workflow_dispatch:
+    - cron: '*/30 * * * *' # refresh every 30 minutes
+  workflow_dispatch:        # manual "Run workflow" button
+
+concurrency:
+  group: readme-status
+  cancel-in-progress: true
+
 
 
 permissions:
