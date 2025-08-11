@@ -7,11 +7,11 @@
 
 | Service | Status | When | Link |
 |---|---|---|---|
-| GitHub | Commit `170e476` — ci: Render status fallback to service when no deploys | 2025-08-11 04:28 UTC | [View](https://github.com/charlesramshur/ramroots/commit/170e476b6262d469767141c83df4d7f37531f424) |
+| GitHub | Commit `9bea532` — ci: debug Render API response | 2025-08-11 04:40 UTC | [View](https://github.com/charlesramshur/ramroots/commit/9bea532bb126848bf84db47b5c856f42df6a1ada) |
 | Vercel | READY | 2025-08-11 04:14 UTC | [Open](https://ramroots-frontend-bv175gipx-charles-ramshurs-projects.vercel.app) |
 | Render (api) | UNKNOWN<br/><sub>Commit `—`</sub> | — | [Dashboard](https://dashboard.render.com/services/srv-d2b7c5fdiees73eg25d0) |
 
-_Last updated: 2025-08-11 04:28 UTC_
+_Last updated: 2025-08-11 04:40 UTC_
 
 <!-- STATUS-END -->`) will refresh with live deployment and build info.
 2. You can manually update the “Quick Notes” before sending me the ZIP so I instantly know what’s happening.
