@@ -5,13 +5,11 @@ const fmt = (d) =>
 
 async function vercel() {
   const u = new URL("https://api.vercel.com/v13/deployments");
-  u.searchParams.set("projectId", process.env.VERCEL_PROJECT_ID);
+  if (process.env.VERCEL_PROJECT_NAME) u.searchParams.set("app", process.env.VERCEL_PROJECT_NAME);
+  else u.searchParams.set("projectId", process.env.VERCEL_PROJECT_ID);
   u.searchParams.set("limit", "1");
-  if (process.env.VERCEL_ORG_ID) u.searchParams.set("teamId", process.env.VERCEL_ORG_ID);
 
-  const r = await fetch(u, {
-    headers: { Authorization: `Bearer ${process.env.VERCEL_TOKEN}` },
-  });
+  const r = await fetch(u, { headers: { Authorization: `Bearer ${process.env.VERCEL_TOKEN}` } });
   if (!r.ok) return { status: `ERR ${r.status}`, when: "—", url: "" };
 
   const j = await r.json();
@@ -22,6 +20,7 @@ async function vercel() {
     url: d.url ? `https://${d.url}` : "",
   };
 }
+
 
 
 async function render() {
