@@ -7,11 +7,11 @@
 
 | Service | Status | When | Link |
 |---|---|---|---|
-| GitHub | Commit `c995cf7` — chore: auto-update README status | 2025-08-11 19:31 UTC | [View](https://github.com/charlesramshur/ramroots/commit/c995cf7ccdf6f4daa435ffd5ac1b3db46a942a0d) |
-| Vercel | READY | 2025-08-11 19:31 UTC | [Open](https://ramroots-frontend-fh3je10u5-charles-ramshurs-projects.vercel.app) |
-| Render (api) | LIVE<br/><sub>Commit `c995cf7`</sub> | 2025-08-11 19:32 UTC | [Dashboard](https://dashboard.render.com/web/srv-d2b7c5fdiees73eg25d0) |
+| GitHub | Commit `2938b21` — chore: auto-update README status | 2025-08-11 20:38 UTC | [View](https://github.com/charlesramshur/ramroots/commit/2938b217be98358a2c655326d04d9c2157500c8e) |
+| Vercel | READY | 2025-08-11 20:38 UTC | [Open](https://ramroots-frontend-sgt0a8e5t-charles-ramshurs-projects.vercel.app) |
+| Render (api) | LIVE<br/><sub>Commit `2938b21`</sub> | 2025-08-11 20:39 UTC | [Dashboard](https://dashboard.render.com/web/srv-d2b7c5fdiees73eg25d0) |
 
-_Last updated: 2025-08-11 20:38 UTC_
+_Last updated: 2025-08-11 21:31 UTC_
 
 <!-- STATUS-END -->`) will refresh with live deployment and build info.
 2. You can manually update the “Quick Notes” before sending me the ZIP so I instantly know what’s happening.
