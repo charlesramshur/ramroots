@@ -145,6 +145,64 @@ app.post('/upload', upload.single('file'), (req, res) => {
   fs.renameSync(tempPath, finalPath);
   res.json({ success: true, name: req.file.originalname });
 });
+// --- Live Info: /api/knowledge?q=your+question ---
+async function fetchJSON(url) {
+  const r = await fetch(url, { headers: { 'accept': 'application/json' } });
+  if (!r.ok) throw new Error(`Fetch failed ${r.status}`);
+  return r.json();
+}
+
+async function ddgInstant(q) {
+  const url = `https://api.duckduckgo.com/?q=${encodeURIComponent(q)}&format=json&no_redirect=1&no_html=1&skip_disambig=1`;
+  const j = await fetchJSON(url);
+  const answer = (j.AbstractText || "").trim();
+  const primaryUrl =
+    j.AbstractURL ||
+    (Array.isArray(j.Results) && j.Results[0]?.FirstURL) ||
+    (Array.isArray(j.RelatedTopics) && j.RelatedTopics[0]?.FirstURL) ||
+    null;
+
+  return {
+    answer,
+    sources: primaryUrl ? [{ title: j.AbstractSource || "DuckDuckGo", url: primaryUrl }] : []
+  };
+}
+
+async function wikipediaAnswer(q) {
+  const search = await fetchJSON(`https://en.wikipedia.org/w/rest.php/v1/search/title?q=${encodeURIComponent(q)}&limit=1`);
+  const title = search?.pages?.[0]?.title;
+  if (!title) return { answer: "", sources: [] };
+
+  const sum = await fetchJSON(`https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(title)}`);
+  const answer = (sum.extract || "").trim();
+  const url = sum?.content_urls?.desktop?.page || (`https://en.wikipedia.org/wiki/${encodeURIComponent(title)}`);
+
+  return { answer, sources: [{ title, url }] };
+}
+
+app.get('/api/knowledge', async (req, res) => {
+  try {
+    const q = (req.query.q || "").toString().trim();
+    if (!q) return res.status(400).json({ error: "Missing q" });
+
+    let { answer, sources } = await ddgInstant(q);
+
+    if (!answer || answer.length < 24) {
+      const w = await wikipediaAnswer(q);
+      if (w.answer) {
+        answer = w.answer;
+        sources = w.sources;
+      }
+    }
+
+    if (!answer) return res.status(404).json({ q, answer: "", sources: [], note: "No direct answer found" });
+    res.json({ q, answer, sources });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: e.message });
+  }
+});
+
 // Health check
 app.get('/api/health', (req, res) => {
   res.status(200).json({ status: 'ok', time: new Date().toISOString() });
