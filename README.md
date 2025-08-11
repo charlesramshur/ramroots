@@ -7,11 +7,11 @@
 
 | Service | Status | When | Link |
 |---|---|---|---|
-| GitHub | Commit `5367260` — ci: log Render API error | 2025-08-11 04:13 UTC | [View](https://github.com/charlesramshur/ramroots/commit/5367260be708dfdec7fdb991df3f705ddbe8b38e) |
-| Vercel | QUEUED | 2025-08-11 04:14 UTC | [Open](https://ramroots-frontend-ugm8w55wb-charles-ramshurs-projects.vercel.app) |
+| GitHub | Commit `a7ab8de` — ci: show Render latest deploy status | 2025-08-11 04:22 UTC | [View](https://github.com/charlesramshur/ramroots/commit/a7ab8ded781c6ca648190b2f4b00fdc5e18786ca) |
+| Vercel | READY | 2025-08-11 04:14 UTC | [Open](https://ramroots-frontend-bv175gipx-charles-ramshurs-projects.vercel.app) |
 | Render (api) | UNKNOWN<br/><sub>Commit `—`</sub> | — | [Dashboard](https://dashboard.render.com/services/srv-d2b7c5fdiees73eg25d0) |
 
-_Last updated: 2025-08-11 04:14 UTC_
+_Last updated: 2025-08-11 04:22 UTC_
 
 <!-- STATUS-END -->`) will refresh with live deployment and build info.
 2. You can manually update the “Quick Notes” before sending me the ZIP so I instantly know what’s happening.
