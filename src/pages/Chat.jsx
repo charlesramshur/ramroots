@@ -3,8 +3,8 @@ import React, { useState } from 'react';
 import './Chat.css';
 import { askKnowledge } from '../utils/knowledge';
 
-// Use env var so it works locally AND on Vercel
-const API = import.meta.env.VITE_API_URL;
+// Works locally and on Vercel
+const API = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
 // helper: call backend to create an autopilot PR
 async function createPR(task) {
@@ -20,39 +20,92 @@ async function createPR(task) {
   return r.json();
 }
 
+// supports JSON after "edit:" OR key=value;key=value
+function parseEditArgs(rest) {
+  const trimmed = rest.trim();
+  try {
+    if (trimmed.startsWith('{')) return JSON.parse(trimmed);
+  } catch {}
+  // fallback: key=value ; key=value
+  const out = {};
+  trimmed.split(/;|\n/).forEach((pair) => {
+    const m = pair.split('=');
+    if (m.length >= 2) {
+      const k = m.shift().trim();
+      const v = m.join('=').trim();
+      if (k) out[k] = v;
+    }
+  });
+  return out;
+}
+
 function Chat() {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
 
-  const handleSend = async () => {
-    if (!input.trim()) return;
+  const pushReply = (text) =>
+    setMessages((prev) => [...prev, { from: 'RamRoot', text }]);
 
+  const handleSend = async () => {
     const text = input.trim();
-    const newMessages = [...messages, { from: 'You', text }];
-    setMessages(newMessages);
+    if (!text) return;
+
+    // show your message
+    setMessages((m) => [...m, { from: 'You', text }]);
     setInput('');
 
     // ---- PR shortcut: "pr: do a thing" or "/pr do a thing"
-    const prMatch =
+    const prTask =
       text.toLowerCase().startsWith('pr:') ? text.slice(3).trim() :
       text.toLowerCase().startsWith('/pr ') ? text.slice(4).trim() : null;
 
-    if (prMatch) {
+    if (prTask) {
       try {
-        const j = await createPR(prMatch);
+        const j = await createPR(prTask);
         const prUrl = j?.pr || '(no link returned)';
         const branch = j?.branch || '(branch?)';
-        setMessages(prev => [
-          ...prev,
-          { from: 'RamRoot', text: `Opened PR on branch **${branch}**.\n${prUrl}` },
-        ]);
+        pushReply(`Opened PR on branch **${branch}**.\n${prUrl}`);
       } catch (e) {
-        setMessages(prev => [
-          ...prev,
-          { from: 'RamRoot', text: `⚠️ Could not open PR: ${e.message}` },
-        ]);
+        pushReply(`⚠️ Could not open PR: ${e.message}`);
       }
-      return; // done
+      return;
+    }
+
+    // ---- safe ops: "op: status" / "op: build"
+    if (text.toLowerCase().startsWith('op:')) {
+      try {
+        const op = text.slice(3).trim();
+        const r = await fetch(`${API}/api/self/ops`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ op }),
+        });
+        const j = await r.json();
+        if (j.ok) pushReply('ok op\nresult\n-- --\n' + JSON.stringify(j.result));
+        else pushReply(`⚠️ Op failed: ${JSON.stringify(j)}`);
+      } catch (e) {
+        pushReply(`⚠️ Op error: ${e.message}`);
+      }
+      return;
+    }
+
+    // ---- safe file edit (opens a PR): 'edit: {"file":"src/pages/Chat.jsx","find":"old","replace":"new"}'
+    // or: edit: file=src/pages/Chat.jsx;find=old;replace=new;message=autopilot edit
+    if (text.toLowerCase().startsWith('edit:')) {
+      try {
+        const args = parseEditArgs(text.slice(5));
+        const r = await fetch(`${API}/api/self/edit`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(args),
+        });
+        const j = await r.json();
+        if (j.ok) pushReply(`Edit PR opened for \`${j.file}\` on **${j.branch}**.\n${j.pr}`);
+        else pushReply(`⚠️ Edit failed: ${JSON.stringify(j)}`);
+      } catch (e) {
+        pushReply(`⚠️ Edit error: ${e.message}`);
+      }
+      return;
     }
 
     // ---- BEGIN live knowledge check
@@ -60,11 +113,11 @@ function Chat() {
       const k = await askKnowledge(text);
       if (k?.answer) {
         const src = (k.sources || [])
-          .map(s => `- ${s.title} (${s.url})`)
+          .map((s) => `- ${s.title} (${s.url})`)
           .join('\n');
         const txt = src ? `${k.answer}\n\nSources:\n${src}` : k.answer;
-        setMessages(prev => [...prev, { from: 'RamRoot', text: txt }]);
-        return; // skip LLM call because we already answered live
+        pushReply(txt);
+        return; // skip LLM call
       }
     } catch {
       // ignore; fall through to LLM
@@ -78,39 +131,30 @@ function Chat() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ prompt: text }),
       });
-
       const data = await response.json();
-      const reply = data.reply || '⚠️ No reply received.';
-      setMessages(prev => [...prev, { from: 'RamRoot', text: reply }]);
+      pushReply(data.reply || '⚠️ No reply received.');
     } catch (err) {
-      console.error(err);
-      setMessages(prev => [
-        ...prev,
-        { from: 'RamRoot', text: '⚠️ Error reaching server.' },
-      ]);
+      pushReply('⚠️ Error reaching server.');
     }
   };
 
-  const handleKeyDown = (e) => {
-    if (e.key === 'Enter') handleSend();
-  };
+  const handleKey = (e) => e.key === 'Enter' && handleSend();
 
   return (
     <div className="chat-container">
       <div className="chat-box">
-        {messages.map((msg, i) => (
-          <div key={i}>
-            <strong>{msg.from}:</strong>{' '}
-            <span dangerouslySetInnerHTML={{ __html: msg.text.replace(/\n/g, '<br/>') }} />
+        {messages.map((m, i) => (
+          <div key={i} style={{ whiteSpace: 'pre-wrap' }}>
+            <strong>{m.from}:</strong> {m.text}
           </div>
         ))}
       </div>
       <input
         type="text"
-        placeholder='Type your message and press Enter… (tip: "pr: make a tiny docs edit")'
+        placeholder={`Type your message and press Enter… (tip: "op: status")`}
         value={input}
         onChange={(e) => setInput(e.target.value)}
-        onKeyDown={handleKeyDown}
+        onKeyDown={handleKey}
       />
     </div>
   );
