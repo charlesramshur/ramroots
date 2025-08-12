@@ -7,11 +7,11 @@
 
 | Service | Status | When | Link |
 |---|---|---|---|
-| GitHub | Commit `b7eb080` — chore: auto-update README status | 2025-08-12 19:28 UTC | [View](https://github.com/charlesramshur/ramroots/commit/b7eb080dd20d12a3e5a6622fc1cd24a8341b3c0d) |
-| Vercel | READY | 2025-08-12 19:28 UTC | [Open](https://ramroots-frontend-e1mf2t0z6-charles-ramshurs-projects.vercel.app) |
-| Render (api) | LIVE<br/><sub>Commit `b7eb080`</sub> | 2025-08-12 19:29 UTC | [Dashboard](https://dashboard.render.com/web/srv-d2b7c5fdiees73eg25d0) |
+| GitHub | Commit `c5663d3` — autopilot: Draft plan to integrate Gmail OAuth and list unread count (#1) | 2025-08-12 20:12 UTC | [View](https://github.com/charlesramshur/ramroots/commit/c5663d38c544185dce7071eb0c24bca211e334a1) |
+| Vercel | READY | 2025-08-12 19:43 UTC | [Open](https://ramroots-frontend-gehtl446n-charles-ramshurs-projects.vercel.app) |
+| Render (api) | BUILD_IN_PROGRESS<br/><sub>Commit `c5663d3`</sub> | 2025-08-12 20:12 UTC | [Dashboard](https://dashboard.render.com/web/srv-d2b7c5fdiees73eg25d0) |
 
-_Last updated: 2025-08-12 19:43 UTC_
+_Last updated: 2025-08-12 20:13 UTC_
 
 <!-- STATUS-END -->`) will refresh with live deployment and build info.
 2. You can manually update the “Quick Notes” before sending me the ZIP so I instantly know what’s happening.
