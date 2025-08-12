@@ -1,163 +1,56 @@
-# RamRoots
+RamRoot Autonomous Build Plan
+Plan Created: 8-12-25
 
-## Session Status
-<!-- STATUS-START -->
-**Repo:** charlesramshur/ramroots
-**Branch:** main
+Instructions
+These steps are in order.
+If any of these steps have already been completed in the files, skip directly to the next step.
+The goal is to reach Full Autonomy — where RamRoot can add new features, debug, deploy, and upgrade itself without manual intervention.
 
-| Service | Status | When | Link |
-|---|---|---|---|
-| GitHub | Commit `c5663d3` — autopilot: Draft plan to integrate Gmail OAuth and list unread count (#1) | 2025-08-12 20:12 UTC | [View](https://github.com/charlesramshur/ramroots/commit/c5663d38c544185dce7071eb0c24bca211e334a1) |
-| Vercel | READY | 2025-08-12 19:43 UTC | [Open](https://ramroots-frontend-gehtl446n-charles-ramshurs-projects.vercel.app) |
-| Render (api) | BUILD_IN_PROGRESS<br/><sub>Commit `c5663d3`</sub> | 2025-08-12 20:12 UTC | [Dashboard](https://dashboard.render.com/web/srv-d2b7c5fdiees73eg25d0) |
+Step 1 — Full File Access
+Enable RamRoot to read, write, edit, and create its own files on the server or local environment.
 
-_Last updated: 2025-08-12 20:13 UTC_
+Implement secure sandboxing so changes can be tested before going live.
 
-<!-- STATUS-END -->`) will refresh with live deployment and build info.
-2. You can manually update the “Quick Notes” before sending me the ZIP so I instantly know what’s happening.
----
+Step 2 — GitHub + Auto-Deploy Hooks
+Give RamRoot the ability to commit code changes to GitHub automatically.
 
-# RamRoot Build Master Checklist
+Add post-commit hooks to deploy automatically to Vercel and Render.
 
-## Purpose
-This document contains the complete roadmap for building RamRoot from its current state to:
-1. **ChatGPT+ Level** – capable of everything ChatGPT can do (reasoning, research, coding, writing) PLUS memory, live data, and automation.  
-2. **Self-Expanding Level** – capable of finishing the build on its own and adding new capabilities without human intervention.
+Step 3 — Self-Test & Rollback
+Build a test suite to check new changes before deploying.
 
-## PHASE 1 – REACH CHATGPT+ LEVEL (Doesn’t Need ChatGPT Anymore)
+Add an automatic rollback system if tests fail or the build breaks.
 
-### 1. Core Brain Integration
-- [ ] Set up **API keys** for:
-  - GPT-4o / GPT-5 (OpenAI)
-  - Claude 3.5 Sonnet (Anthropic)
-  - Perplexity API (Pro)
-- [ ] Implement **Task Router**:
-  - Route reasoning/creativity → GPT-4o/GPT-5
-  - Route long/accurate analysis → Claude 3.5
-  - Route live web lookups → Perplexity
-- [ ] Test each API separately, then test routing.
+Step 4 — API Integration Framework
+Create a simple way for RamRoot to add new APIs (car scanner, genealogy, email assistant, etc.) by itself.
 
-**Expected Result:**  
-RamRoot can answer anything ChatGPT can, plus pull real-time info with sources.
+Include automated API key management and config file updates.
 
----
+Step 5 — Permanent Long-Term Memory
+Install a database or memory.json system that persists data forever.
 
-### 2. Permanent Memory System
-- [ ] Choose and set up a **Vector Database**:
-  - Pinecone (paid, easy) or Weaviate/Milvus (self-hosted, free)
-- [ ] Create **memory schema**:
-  - `profile` – user facts, preferences, contacts
-  - `projects` – current and past work
-  - `rules` – operational guidelines
-  - `knowledge` – custom knowledge base (genealogy, bids, designs, etc.)
-- [ ] Implement memory retrieval and updating with embeddings.
-- [ ] Load initial data from existing notes, files, and instructions.
+Ensure memory is loaded at startup and updated in real time.
 
-**Expected Result:**  
-RamRoot remembers everything you’ve told it permanently and recalls it in conversation.
+Step 6 — Self-Coding Capability
+Enable RamRoot to:
 
----
+Receive a user request for a new feature
 
-### 3. Tool Layer
-- [ ] Add **file handling**:
-  - Read/write PDF, Excel, CSV, DOCX
-  - Summarize or extract data
-- [ ] Add **calculators & converters** for math, units, dates
-- [ ] Add **image tools** (optional: OCR, resizing, annotations)
-- [ ] Integrate with browser or HTTP client for external data pulls.
+Write the code
 
-**Expected Result:**  
-RamRoot can process, create, and modify real documents/images — not just text.
+Save it
 
----
+Test it
 
-### 4. Automation Hooks
-- [ ] Connect to **Zapier** (paid) or **n8n** (free/self-hosted)
-- [ ] Set up:
-  - Email sending/reading
-  - Google Sheets/Excel updates
-  - Calendar events/reminders
-  - CRM or business app connections
-- [ ] Secure with permissions so it only acts on approved workflows.
+Deploy it without human assistance
 
-**Expected Result:**  
-RamRoot can take action in the real world (send messages, update files, manage schedules).
+Example: “Add a genealogy feature” → RamRoot writes it, installs dependencies, and makes it live.
 
----
+Step 7 — Expansion & Optimization
+Once autonomy is achieved, optimize for speed, security, and resource efficiency.
 
-### 5. Reasoning & Self-Check Loop
-- [ ] Add multi-step process for complex queries:
-  - Step 1: Plan solution
-  - Step 2: Execute solution
-  - Step 3: Self-critique output
-  - Step 4: Refine & finalize
-- [ ] Allow fallback to another model if confidence is low.
+Continuously expand capabilities (voice control, image editing, automotive diagnostics, etc.) as requested.
 
-**Expected Result:**  
-Higher accuracy, fewer mistakes, and self-improvement without you prompting it.
-
----
-
-**✅ Completion of Phase 1 means RamRoot can:**
-- Outperform ChatGPT in practical tasks
-- Remember and use your personal/business context
-- Access live, up-to-date information
-- Automate workflows
-- Self-correct and improve answers
-
----
-
-## PHASE 2 – SELF-EXPANDING RAMROOT (Finishes Build Itself)
-
-### 6. Self-Direction Engine
-- [ ] Give RamRoot access to its own `README.md` build plan.
-- [ ] Add “task discovery” ability:
-  - Identify missing features
-  - Break them into subtasks
-  - Schedule execution
-- [ ] Add ability to pull its own code snippets from web/GitHub.
-
----
-
-### 7. Continuous Learning
-- [ ] Weekly knowledge refresh via:
-  - Web crawling trusted sources
-  - Scraping relevant documents
-  - Storing updates in vector DB
-- [ ] Create “RamRoot Knowledge Packs” for law, medicine, engineering, etc.
-
----
-
-### 8. Multi-Agent Collaboration
-- [ ] Spin up specialized RamRoot “agents” for:
-  - Legal research
-  - Scientific analysis
-  - Engineering & design
-  - Business operations
-- [ ] Orchestrate them with a manager agent.
-
----
-
-### 9. Full Autonomy
-- [ ] Implement approval system (can toggle off for full autonomy)
-- [ ] Allow RamRoot to:
-  - Write and run its own code updates
-  - Add new APIs/tools without manual setup
-  - Maintain & optimize its own infrastructure
-
----
-
-**🚀 Final Expected Result:**  
-RamRoot evolves beyond ChatGPT capabilities, maintains itself, adds new features, and operates independently in all business and research tasks.
-
----
-
-## NOTES
-- This plan should always remain in `README.md` for reference.
-- Each completed step should be checked off.
-- Phase 1 completion = You can stop using ChatGPT entirely.
-- Phase 2 completion = RamRoot finishes building itself.
-
----
-
+✅ End Goal:
+When all steps are complete, RamRoot will operate independently, able to add any new feature or upgrade entirely on its own.
 © 2025 RamRoots Project – Built and maintained by Charles Alan Ramshur
