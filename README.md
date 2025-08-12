@@ -7,11 +7,11 @@
 
 | Service | Status | When | Link |
 |---|---|---|---|
-| GitHub | Commit `211f417` — autopilot: create docs/autopilot/merge-me.md with the single line "ready to merge ✅" (#11) | 2025-08-12 17:40 UTC | [View](https://github.com/charlesramshur/ramroots/commit/211f417ce24b12bc8210c577d1a7dc6b42e63060) |
-| Vercel | READY | 2025-08-12 17:26 UTC | [Open](https://ramroots-frontend-fagbh723r-charles-ramshurs-projects.vercel.app) |
-| Render (api) | BUILD_IN_PROGRESS<br/><sub>Commit `211f417`</sub> | 2025-08-12 17:40 UTC | [Dashboard](https://dashboard.render.com/web/srv-d2b7c5fdiees73eg25d0) |
+| GitHub | Commit `f5237f1` — chore: ignore dist build output | 2025-08-12 18:01 UTC | [View](https://github.com/charlesramshur/ramroots/commit/f5237f11676378f4cf1a2559cc17f044d8cdce61) |
+| Vercel | QUEUED | 2025-08-12 18:01 UTC | [Open](https://ramroots-frontend-568bwz3w1-charles-ramshurs-projects.vercel.app) |
+| Render (api) | BUILD_IN_PROGRESS<br/><sub>Commit `f5237f1`</sub> | 2025-08-12 18:01 UTC | [Dashboard](https://dashboard.render.com/web/srv-d2b7c5fdiees73eg25d0) |
 
-_Last updated: 2025-08-12 17:41 UTC_
+_Last updated: 2025-08-12 18:02 UTC_
 
 <!-- STATUS-END -->`) will refresh with live deployment and build info.
 2. You can manually update the “Quick Notes” before sending me the ZIP so I instantly know what’s happening.
