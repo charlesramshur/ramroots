@@ -1,34 +1,53 @@
 // src/pages/Chat.jsx
 import React, { useState } from 'react';
 import './Chat.css';
+import { askKnowledge } from '../utils/knowledge';
 
-// Use env var so it works locally AND on Vercel
-const API = import.meta.env.VITE_API_URL;
+const API = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
 function Chat() {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
 
   const handleSend = async () => {
-    if (!input.trim()) return;
+    const q = input.trim();
+    if (!q) return;
 
-    const newMessages = [...messages, { from: 'You', text: input }];
+    // Add your message
+    const newMessages = [...messages, { from: 'You', text: q }];
     setMessages(newMessages);
     setInput('');
 
+    // BEGIN live knowledge check
+    try {
+      const k = await askKnowledge(q);
+      if (k?.answer) {
+        const src = (k.sources || [])
+          .map((s) => `- ${s.title} (${s.url})`)
+          .join('\n');
+        const txt = src ? `${k.answer}\n\nSources:\n${src}` : k.answer;
+
+        setMessages((prev) => [...prev, { from: 'RamRoot', text: txt }]);
+        return; // answered live; skip LLM
+      }
+    } catch (_) {
+      // ignore; fall through to LLM
+    }
+    // END live knowledge check
+
+    // Fallback to LLM/chat endpoint
     try {
       const response = await fetch(`${API}/api/ask`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ prompt: input }),
+        body: JSON.stringify({ prompt: q }),
       });
-
       const data = await response.json();
       const reply = data.reply || '⚠️ No reply received.';
-      setMessages(prev => [...prev, { from: 'RamRoot', text: reply }]);
+      setMessages((prev) => [...prev, { from: 'RamRoot', text: reply }]);
     } catch (err) {
       console.error(err);
-      setMessages(prev => [
+      setMessages((prev) => [
         ...prev,
         { from: 'RamRoot', text: '⚠️ Error reaching server.' },
       ]);
