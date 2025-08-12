@@ -1,0 +1,50 @@
+name: CI & Auto-merge
+on:
+  pull_request:
+    branches: [ main ]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      # Frontend deps (root)
+      - run: npm ci || npm install
+
+      # Backend deps (server/)
+      - run: npm ci || npm install
+        working-directory: server
+
+      # Optional: won't fail if tests are missing
+      - run: npm test --if-present
+      - run: npm test --if-present
+        working-directory: server
+
+  auto-merge:
+    needs: ci
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const pr = context.payload.pull_request;
+            if (!pr) { core.setFailed('No PR in context'); return; }
+            await github.rest.pulls.merge({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: pr.number,
+              merge_method: 'squash'
+            });
