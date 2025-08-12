@@ -7,11 +7,11 @@
 
 | Service | Status | When | Link |
 |---|---|---|---|
-| GitHub | Commit `99de48a` — chore: workflow + knowledge fixes + autopilot hook | 2025-08-12 02:34 UTC | [View](https://github.com/charlesramshur/ramroots/commit/99de48a1c777ceda81d1653b8eced83cdb559251) |
-| Vercel | QUEUED | 2025-08-12 02:34 UTC | [Open](https://ramroots-frontend-cmvhetraz-charles-ramshurs-projects.vercel.app) |
-| Render (api) | BUILD_IN_PROGRESS<br/><sub>Commit `99de48a`</sub> | 2025-08-12 02:34 UTC | [Dashboard](https://dashboard.render.com/web/srv-d2b7c5fdiees73eg25d0) |
+| GitHub | Commit `811add4` — autopilot: add a README status badge that shows CI passing (#7) | 2025-08-12 03:31 UTC | [View](https://github.com/charlesramshur/ramroots/commit/811add4edc1750351f674a54e7105c5f3a979804) |
+| Vercel | READY | 2025-08-12 03:31 UTC | [Open](https://ramroots-frontend-lrnehvelt-charles-ramshurs-projects.vercel.app) |
+| Render (api) | LIVE<br/><sub>Commit `811add4`</sub> | 2025-08-12 03:32 UTC | [Dashboard](https://dashboard.render.com/web/srv-d2b7c5fdiees73eg25d0) |
 
-_Last updated: 2025-08-12 02:34 UTC_
+_Last updated: 2025-08-12 03:40 UTC_
 
 <!-- STATUS-END -->`) will refresh with live deployment and build info.
 2. You can manually update the “Quick Notes” before sending me the ZIP so I instantly know what’s happening.
