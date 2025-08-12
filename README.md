@@ -7,11 +7,11 @@
 
 | Service | Status | When | Link |
 |---|---|---|---|
-| GitHub | Commit `0bfc020` — chore: ignore build output (dist/) locally | 2025-08-12 17:25 UTC | [View](https://github.com/charlesramshur/ramroots/commit/0bfc02007f2c6f0d63771f26e8013ad718491508) |
-| Vercel | QUEUED | 2025-08-12 17:26 UTC | [Open](https://ramroots-frontend-fagbh723r-charles-ramshurs-projects.vercel.app) |
-| Render (api) | BUILD_IN_PROGRESS<br/><sub>Commit `0bfc020`</sub> | 2025-08-12 17:26 UTC | [Dashboard](https://dashboard.render.com/web/srv-d2b7c5fdiees73eg25d0) |
+| GitHub | Commit `aa42e67` — Merge pull request #2 from charlesramshur/autopilot/2025-08-12T02-18-36-188Z | 2025-08-12 17:31 UTC | [View](https://github.com/charlesramshur/ramroots/commit/aa42e6757cc019b536a623fcfc72613ef18327df) |
+| Vercel | READY | 2025-08-12 17:26 UTC | [Open](https://ramroots-frontend-fagbh723r-charles-ramshurs-projects.vercel.app) |
+| Render (api) | BUILD_IN_PROGRESS<br/><sub>Commit `aa42e67`</sub> | 2025-08-12 17:31 UTC | [Dashboard](https://dashboard.render.com/web/srv-d2b7c5fdiees73eg25d0) |
 
-_Last updated: 2025-08-12 17:26 UTC_
+_Last updated: 2025-08-12 17:31 UTC_
 
 <!-- STATUS-END -->`) will refresh with live deployment and build info.
 2. You can manually update the “Quick Notes” before sending me the ZIP so I instantly know what’s happening.
