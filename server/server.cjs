@@ -224,7 +224,7 @@ async function wikipediaInfoboxValue(title, keyRegexes) {
   let result = null;
   $('table.infobox tr').each((_, el) => {
     const th = $(el).find('th').first();
-    const td = $(el).find('td').first();
+       const td = $(el).find('td').first();
     if (!th.length || !td.length) return;
     const label = th.text().trim().toLowerCase();
     for (const re of keyRegexes) {
@@ -382,10 +382,13 @@ app.post('/api/self/pr', async (req, res) => {
     // 3) Branch, commit, push
     const branch = `autopilot/${stamp}`;
     const authorName = process.env.GIT_AUTHOR_NAME || "RamRoot Bot";
-    the_authorEmail = process.env.GIT_AUTHOR_EMAIL || "bot@ramroot.local";
+    const authorEmail = process.env.GIT_AUTHOR_EMAIL || "bot@ramroot.local";
+
     run(`git checkout -b "${branch}"`);
     run(`git add "${relPath}"`);
-    run(`git -c user.name="${authorName}" -c user.email="${the_authorEmail}" commit -m "autopilot: ${task}"`);
+    const msg = `autopilot: ${task}`.replace(/"/g, '\\"');
+
+    run(`git -c user.name="${authorName}" -c user.email="${authorEmail}" commit -m "${msg}"`);
     run(`git push -u origin "${branch}"`);
 
     // 4) Open PR
@@ -402,6 +405,169 @@ app.post('/api/self/pr', async (req, res) => {
     res.status(500).json({ error: e.message || String(e) });
   } finally {
     try { run('git checkout -'); } catch {}
+  }
+});
+
+// =================== PR Autopilot: safe file edit ===================
+// POST /api/self/edit
+// Body: { "file": "src/pages/Chat.jsx", "find": "old", "replace": "new", "message": "short title" }
+app.post('/api/self/edit', async (req, res) => {
+  try {
+    if (!process.env.GITHUB_TOKEN || !GITHUB_REPO) {
+      return res.status(400).json({ error: "Missing GITHUB_TOKEN or GITHUB_REPO" });
+    }
+
+    const fileRel = (req.body?.file || "").toString().trim();
+    const find = (req.body?.find || "").toString();
+    const replace = (req.body?.replace || "").toString();
+    const message = (req.body?.message || "").toString().trim() || `autopilot edit: ${fileRel}`;
+
+    if (!fileRel || !find) {
+      return res.status(400).json({ error: "Missing 'file' or 'find' in body" });
+    }
+
+    // Safety: only allow edits inside the repo and within a whitelist of folders/exts
+    const allowedDirs = ['src', 'server', 'docs', 'public'];
+    const allowedExts = ['.js', '.jsx', '.cjs', '.ts', '.tsx', '.css', '.md', '.json'];
+    const abs = path.normalize(path.join(repoRoot, fileRel));
+    if (!abs.startsWith(repoRoot + path.sep)) {
+      return res.status(400).json({ error: "Path escapes repository" });
+    }
+    const relParts = fileRel.split(/[\\/]/);
+    if (!allowedDirs.includes(relParts[0])) {
+      return res.status(400).json({ error: "Editing this folder is not allowed" });
+    }
+    if (!allowedExts.includes(path.extname(fileRel))) {
+      return res.status(400).json({ error: "Editing this file type is not allowed" });
+    }
+    if (!fs.existsSync(abs)) {
+      return res.status(404).json({ error: "File not found" });
+    }
+
+    // Read & apply replacement (literal replace of first occurrence)
+    let text = fs.readFileSync(abs, 'utf8');
+    if (!text.includes(find)) {
+      return res.status(400).json({ error: "The 'find' text was not found in the file" });
+    }
+    const newText = text.replace(find, replace);
+    if (newText === text) {
+      return res.status(400).json({ error: "No change produced" });
+    }
+    fs.writeFileSync(abs, newText, 'utf8');
+
+    // Branch, commit, push, PR
+    const stamp = new Date().toISOString().replace(/[:.]/g, '-');
+    const branch = `edit/${stamp}`;
+
+    const authorName = process.env.GIT_AUTHOR_NAME || "RamRoot Bot";
+    const authorEmail = process.env.GIT_AUTHOR_EMAIL || "bot@ramroot.local";
+
+    run(`git checkout -b "${branch}"`);
+    run(`git add "${fileRel}"`);
+    run(`git -c user.name="${authorName}" -c user.email="${authorEmail}" commit -m "${message.replace(/"/g, '\\"')}"`);
+    run(`git push -u origin "${branch}"`);
+
+    const pr = await octokit.pulls.create({
+      owner: OWNER, repo: REPO,
+      title: message,
+      head: branch, base: "main",
+      body: `Edited \`${fileRel}\`\n\n• find: \`${find}\`\n• replace: \`${replace}\``
+    });
+
+    res.json({ ok: true, branch, pr: pr.data.html_url, file: fileRel });
+  } catch (e) {
+    console.error("autopilot EDIT error:", e.toString());
+    res.status(500).json({ error: e.message || String(e) });
+  } finally {
+    try { run('git checkout -'); } catch {}
+  }
+});
+// =================== PR Autopilot: merge a PR ===================
+// =================== PR Autopilot: merge a PR ===================
+// POST /api/self/merge  { "number": 12 }
+app.post('/api/self/merge', async (req, res) => {
+  try {
+    if (!process.env.GITHUB_TOKEN || !GITHUB_REPO) {
+      return res.status(400).json({ error: "Missing GITHUB_TOKEN or GITHUB_REPO" });
+    }
+    const prNum = Number(req.body?.number || req.body?.pr || req.query?.number);
+    if (!prNum) return res.status(400).json({ error: "Missing PR number" });
+
+    // fetch PR to get head branch
+    let prInfo = await octokit.pulls.get({ owner: OWNER, repo: REPO, pull_number: prNum });
+    const headRef = prInfo.data.head.ref;
+
+    // wait up to ~90s for mergeability to be computed and checks to pass
+    const sleep = (ms) => new Promise(r => setTimeout(r, ms));
+    let mergeable = prInfo.data.mergeable;
+    let state = prInfo.data.mergeable_state; // 'clean','dirty','blocked','behind','unknown', etc.
+    for (let i = 0; i < 30; i++) {
+      if (prInfo.data.draft) {
+        return res.status(400).json({ error: "PR is draft; mark ready for review first." });
+      }
+      if (mergeable && state === 'clean') break;                 // good to merge
+      if (['dirty', 'blocked'].includes(state)) {                // conflicts or required reviews/checks
+        return res.status(400).json({ error: "PR not mergeable", mergeable, state });
+      }
+      // refresh
+      await sleep(3000);
+      prInfo = await octokit.pulls.get({ owner: OWNER, repo: REPO, pull_number: prNum });
+      mergeable = prInfo.data.mergeable;
+      state = prInfo.data.mergeable_state;
+    }
+    if (!(mergeable && state === 'clean')) {
+      return res.status(400).json({ error: "Timed out waiting for mergeable=clean", mergeable, state });
+    }
+
+    // merge (squash by default)
+    await octokit.pulls.merge({
+      owner: OWNER,
+      repo: REPO,
+      pull_number: prNum,
+      merge_method: 'squash'
+    });
+
+    // best-effort: delete branch after merge
+    try {
+      await octokit.git.deleteRef({ owner: OWNER, repo: REPO, ref: `heads/${headRef}` });
+    } catch {}
+
+    res.json({ ok: true, merged: true, number: prNum, branch: headRef, url: prInfo.data.html_url });
+  } catch (e) {
+    res.status(500).json({ error: e.message || String(e) });
+  }
+});
+
+
+// =================== Ops runner (safe allowlist) ===================
+const SAFE_OPS = {
+  // Quick repo status
+  status: async () => {
+    const branch = run('git rev-parse --abbrev-ref HEAD').trim();
+    let dirtyList = '';
+    try { dirtyList = run('git status --porcelain').trim(); } catch {}
+    const dirty = Boolean(dirtyList);
+    const changed = dirtyList ? dirtyList.split(/\r?\n/).length : 0;
+    return { branch, dirty, changed };
+  },
+
+  // Build the app (optional)
+  build: async () => {
+    try { return run('npm run build'); }
+    catch (e) { return (e.stdout?.toString() || e.message || String(e)).slice(0, 4000); }
+  },
+};
+
+app.post('/api/self/ops', async (req, res) => {
+  const op = (req.body?.op || '').toString().trim().toLowerCase();
+  if (!op || !SAFE_OPS[op]) {
+    return res.status(400).json({ error: 'Unknown op', allowed: Object.keys(SAFE_OPS) });
+  }
+  try {
+    const result = await SAFE_OPS[op]();
+    res.json({ ok: true, op, result });
+  } catch (e) {
+    res.status(500).json({ error: e.message || String(e) });
   }
 });
 
