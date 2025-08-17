@@ -5,7 +5,7 @@ const crypto = require('crypto');
 
 const router = express.Router();
 
-// DB pool
+// DB pool (Render Postgres)
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
   ssl: { rejectUnauthorized: false }
@@ -14,16 +14,19 @@ const pool = new Pool({
 // ------------ Health ------------
 router.get('/ping', (_req, res) => res.send('pong'));
 router.get('/db-ping', async (_req, res) => {
-  try { const r = await pool.query('SELECT NOW() AS now'); res.json({ ok: true, now: r.rows[0].now }); }
-  catch (e) { console.error('DB PING ERROR:', e); res.status(500).json({ ok: false, error: 'db_error' }); }
+  try {
+    const r = await pool.query('SELECT NOW() AS now');
+    res.json({ ok: true, now: r.rows[0].now });
+  } catch (e) {
+    console.error('DB PING ERROR:', e);
+    res.status(500).json({ ok: false, error: 'db_error' });
+  }
 });
 
-// ------------ Schema (no pgvector yet) ------------
+// ------------ Schema (NO EXTENSIONS REQUIRED) ------------
 const bootstrapSQL = `
-CREATE EXTENSION IF NOT EXISTS pgcrypto;
-
 CREATE TABLE IF NOT EXISTS emails (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  id BIGSERIAL PRIMARY KEY,
   message_id TEXT UNIQUE,
   thread_id TEXT,
   "from" TEXT NOT NULL,
@@ -35,8 +38,8 @@ CREATE TABLE IF NOT EXISTS emails (
 );
 
 CREATE TABLE IF NOT EXISTS proposals (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  email_id UUID REFERENCES emails(id) ON DELETE CASCADE,
+  id BIGSERIAL PRIMARY KEY,
+  email_id BIGINT REFERENCES emails(id) ON DELETE CASCADE,
   proposed_action TEXT CHECK (proposed_action IN ('reply','archive','label','delete')) NOT NULL,
   rationale TEXT NOT NULL,
   draft_text TEXT,
@@ -45,8 +48,8 @@ CREATE TABLE IF NOT EXISTS proposals (
 );
 
 CREATE TABLE IF NOT EXISTS approvals (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  proposal_id UUID UNIQUE REFERENCES proposals(id) ON DELETE CASCADE,
+  id BIGSERIAL PRIMARY KEY,
+  proposal_id BIGINT UNIQUE REFERENCES proposals(id) ON DELETE CASCADE,
   status TEXT CHECK (status IN ('pending','approved','rejected')) NOT NULL DEFAULT 'pending',
   decided_by TEXT,
   decided_at TIMESTAMPTZ,
@@ -57,8 +60,13 @@ CREATE TABLE IF NOT EXISTS approvals (
 
 // Allow GET so you can click it in a browser
 router.all('/setup', async (_req, res) => {
-  try { await pool.query(bootstrapSQL); res.json({ ok: true, created: true }); }
-  catch (e) { console.error('SETUP ERROR:', e); res.status(500).json({ ok: false, error: 'setup_error' }); }
+  try {
+    await pool.query(bootstrapSQL);
+    res.json({ ok: true, created: true });
+  } catch (e) {
+    console.error('SETUP ERROR:', e);
+    res.status(500).json({ ok: false, error: 'setup_error' });
+  }
 });
 
 // ------------ Core endpoints ------------
@@ -71,7 +79,7 @@ function checkToolAuth(req, res) {
   return true;
 }
 
-// Create a proposal (Relevance will call this)
+// Create a proposal (Relevance will call this via POST)
 router.post('/propose', async (req, res) => {
   if (!checkToolAuth(req, res)) return;
   try {
@@ -84,7 +92,10 @@ router.post('/propose', async (req, res) => {
       [email_id, proposed_action, rationale, draft_text, confidence]
     );
     res.json({ ok: true });
-  } catch (e) { console.error(e); res.status(500).json({ error: 'server_error' }); }
+  } catch (e) {
+    console.error('PROPOSE ERROR:', e);
+    res.status(500).json({ error: 'server_error' });
+  }
 });
 
 // List pending proposals
@@ -99,13 +110,16 @@ router.get('/proposals', async (_req, res) => {
       ORDER BY p.created_at DESC
     `);
     res.json(rows);
-  } catch (e) { console.error('PROPOSALS ERROR:', e); res.status(500).json({ ok: false, error: 'proposals_error' }); }
+  } catch (e) {
+    console.error('PROPOSALS ERROR:', e);
+    res.status(500).json({ ok: false, error: 'proposals_error' });
+  }
 });
 
 // Approve / reject (returns token when approved)
 router.post('/approve', async (req, res) => {
   const { proposalId, decision, decidedBy = 'owner', draftText } = req.body || {};
-  if (!proposalId || !['approved','rejected'].includes(decision))
+  if (!proposalId || !['approved', 'rejected'].includes(decision))
     return res.status(400).json({ error: 'bad input' });
 
   await pool.query('BEGIN');
@@ -125,12 +139,18 @@ router.post('/approve', async (req, res) => {
     if (decision === 'approved') {
       token = crypto.randomBytes(24).toString('hex');
       const exp = new Date(Date.now() + 15 * 60 * 1000); // 15 min
-      await pool.query(`UPDATE approvals SET token=$1, expires_at=$2 WHERE proposal_id=$3`,
-        [token, exp, proposalId]);
+      await pool.query(
+        `UPDATE approvals SET token=$1, expires_at=$2 WHERE proposal_id=$3`,
+        [token, exp, proposalId]
+      );
     }
     await pool.query('COMMIT');
     res.json({ ok: true, token });
-  } catch (e) { await pool.query('ROLLBACK'); console.error(e); res.status(500).json({ error: 'server_error' }); }
+  } catch (e) {
+    await pool.query('ROLLBACK');
+    console.error('APPROVE ERROR:', e);
+    res.status(500).json({ error: 'server_error' });
+  }
 });
 
 // Execute (requires approval token) — SIMULATED for now
@@ -162,7 +182,10 @@ router.get('/debug/seed', async (_req, res) => {
       ['sender@example.com', 'Test subject', 'Snippet…', 'Full body here.']
     );
     res.json({ ok: true, email_id: r.rows[0].id });
-  } catch (e) { console.error('SEED ERROR:', e); res.status(500).json({ ok: false, error: 'seed_error' }); }
+  } catch (e) {
+    console.error('SEED ERROR:', e);
+    res.status(500).json({ ok: false, error: 'seed_error' });
+  }
 });
 
 // Create a proposal without auth (for quick testing in browser)
@@ -176,7 +199,10 @@ router.get('/propose-debug', async (req, res) => {
       [email_id, action, 'debug: pipeline test', 'Thanks for your email — noted.', 0.9]
     );
     res.json({ ok: true });
-  } catch (e) { console.error('PROPOSE-DEBUG ERROR:', e); res.status(500).json({ ok: false, error: 'propose_debug_error' }); }
+  } catch (e) {
+    console.error('PROPOSE-DEBUG ERROR:', e);
+    res.status(500).json({ ok: false, error: 'propose_debug_error' });
+  }
 });
 
 // Approve quickly from browser
@@ -196,12 +222,18 @@ router.get('/approve-debug', async (req, res) => {
     if (decision === 'approved') {
       token = crypto.randomBytes(24).toString('hex');
       const exp = new Date(Date.now() + 15 * 60 * 1000);
-      await pool.query(`UPDATE approvals SET token=$1, expires_at=$2 WHERE proposal_id=$3`,
-        [token, exp, proposal_id]);
+      await pool.query(
+        `UPDATE approvals SET token=$1, expires_at=$2 WHERE proposal_id=$3`,
+        [token, exp, proposal_id]
+      );
     }
     await pool.query('COMMIT');
     res.json({ ok: true, token });
-  } catch (e) { await pool.query('ROLLBACK'); console.error('APPROVE-DEBUG ERROR:', e); res.status(500).json({ ok: false, error: 'approve_debug_error' }); }
+  } catch (e) {
+    await pool.query('ROLLBACK');
+    console.error('APPROVE-DEBUG ERROR:', e);
+    res.status(500).json({ ok: false, error: 'approve_debug_error' });
+  }
 });
 
 // Execute quickly from browser
