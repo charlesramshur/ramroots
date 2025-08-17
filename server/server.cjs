@@ -29,6 +29,8 @@ const port = process.env.PORT || 5000;
 
 app.use(cors());
 app.use(express.json());
+app.use('/triage', require('./routes/triage.cjs'));
+app.get('/triage/ping', (_req, res) => res.send('pong'));
 
 // === Files setup for FileBrowser ===
 const FILES_DIR = path.join(__dirname, 'files');
