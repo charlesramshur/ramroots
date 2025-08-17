@@ -61,7 +61,8 @@ CREATE TABLE IF NOT EXISTS approvals (
 `;
 
 // 1-click setup endpoint
-router.post('/setup', async (_req, res) => {
+router.all('/setup', async (_req, res) => {
+
   try {
     await pool.query(bootstrapSQL);
     return res.json({ ok: true, created: true });
