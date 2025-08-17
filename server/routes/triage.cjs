@@ -78,14 +78,9 @@ function checkToolAuth(req, res) {
   if (auth.slice(7) !== key) return res.status(403).json({ error: 'bad token' });
   return true;
 }
-
-function normalizeAction(a) {
-  return String(a || '').toLowerCase().trim();
-}
-
+const normalizeAction = (a) => String(a || '').toLowerCase().trim();
 function normalizeDraft(action, draft) {
-  // Only keep draft for replies; coerce '', 'undefined', null to null
-  if (action !== 'reply') return null;
+  if (action !== 'reply') return null; // only keep drafts for replies
   const raw = draft == null ? '' : String(draft).trim();
   if (!raw) return null;
   if (raw.toLowerCase() === 'undefined') return null;
@@ -94,7 +89,7 @@ function normalizeDraft(action, draft) {
 
 // ------------ Core endpoints ------------
 
-// Create a proposal (Relevance will call this via POST)
+// Create a proposal (Relevance POST tool)
 router.post('/propose', async (req, res) => {
   if (!checkToolAuth(req, res)) return;
   try {
@@ -102,7 +97,6 @@ router.post('/propose', async (req, res) => {
     if (!email_id || !proposed_action || !rationale || confidence == null) {
       return res.status(400).json({ error: 'missing fields' });
     }
-
     const action = normalizeAction(proposed_action);
     const normDraft = normalizeDraft(action, draft_text);
 
@@ -147,7 +141,6 @@ router.post('/approve', async (req, res) => {
     if (draftText) {
       await pool.query(`UPDATE proposals SET draft_text=$1 WHERE id=$2`, [draftText, proposalId]);
     }
-
     await pool.query(
       `INSERT INTO approvals (proposal_id, status, decided_by, decided_at)
        VALUES ($1,$2,$3, now())
@@ -194,89 +187,86 @@ router.post('/execute', async (req, res) => {
   res.json({ ok: true, simulated: true });
 });
 
-// ------------ Debug endpoints (clickable from browser) ------------
-router.get('/debug/seed', async (_req, res) => {
-  try {
-    const r = await pool.query(
-      `INSERT INTO emails ("from", subject, snippet, body)
-       VALUES ($1,$2,$3,$4) RETURNING id`,
-      ['sender@example.com', 'Test subject', 'Snippet…', 'Full body here.']
-    );
-    res.json({ ok: true, email_id: r.rows[0].id });
-  } catch (e) {
-    console.error('SEED ERROR:', e);
-    res.status(500).json({ ok: false, error: 'seed_error' });
-  }
-});
-
-// Create a proposal without auth (for quick testing in browser)
-router.get('/propose-debug', async (req, res) => {
-  try {
-    const { email_id, action = 'label' } = req.query;
-    if (!email_id) return res.status(400).json({ error: 'email_id required' });
-
-    const normAction = normalizeAction(action);
-    const normDraft = normalizeDraft(normAction, 'Thanks for your email — noted.');
-
-    await pool.query(
-      `INSERT INTO proposals (email_id, proposed_action, rationale, draft_text, confidence)
-       VALUES ($1,$2,$3,$4,$5)`,
-      [email_id, normAction, 'debug: pipeline test', normDraft, 0.9]
-    );
-    res.json({ ok: true });
-  } catch (e) {
-    console.error('PROPOSE-DEBUG ERROR:', e);
-    res.status(500).json({ ok: false, error: 'propose_debug_error' });
-  }
-});
-
-// Approve quickly from browser
-router.get('/approve-debug', async (req, res) => {
-  const { proposal_id, decision = 'approved' } = req.query;
-  if (!proposal_id) return res.status(400).json({ error: 'proposal_id required' });
-
-  await pool.query('BEGIN');
-  try {
-    await pool.query(
-      `INSERT INTO approvals (proposal_id, status, decided_by, decided_at)
-       VALUES ($1,$2,$3, now())
-       ON CONFLICT (proposal_id) DO UPDATE
-       SET status=EXCLUDED.status, decided_by=EXCLUDED.decided_by, decided_at=EXCLUDED.decided_at`,
-      [proposal_id, decision, 'owner']
-    );
-
-    let token = null;
-    if (decision === 'approved') {
-      token = crypto.randomBytes(24).toString('hex');
-      const exp = new Date(Date.now() + 15 * 60 * 1000);
-      await pool.query(
-        `UPDATE approvals SET token=$1, expires_at=$2 WHERE proposal_id=$3`,
-        [token, exp, proposal_id]
+// ------------ Debug endpoints (gated) ------------
+if (process.env.RAMROOT_DEBUG === '1') {
+  // Seed one email
+  router.get('/debug/seed', async (_req, res) => {
+    try {
+      const r = await pool.query(
+        `INSERT INTO emails ("from", subject, snippet, body)
+         VALUES ($1,$2,$3,$4) RETURNING id`,
+        ['sender@example.com', 'Test subject', 'Snippet…', 'Full body here.']
       );
+      res.json({ ok: true, email_id: r.rows[0].id });
+    } catch (e) {
+      console.error('SEED ERROR:', e);
+      res.status(500).json({ ok: false, error: 'seed_error' });
     }
-    await pool.query('COMMIT');
-    res.json({ ok: true, token });
-  } catch (e) {
-    await pool.query('ROLLBACK');
-    console.error('APPROVE-DEBUG ERROR:', e);
-    res.status(500).json({ ok: false, error: 'approve_debug_error' });
-  }
-});
+  });
 
-// Execute quickly from browser
-router.get('/execute-debug', async (req, res) => {
-  const { proposal_id, token } = req.query;
-  if (!proposal_id || !token) return res.status(400).json({ error: 'proposal_id and token required' });
+  // Create a proposal without auth (quick browser test)
+  router.get('/propose-debug', async (req, res) => {
+    try {
+      const { email_id, action = 'label' } = req.query;
+      if (!email_id) return res.status(400).json({ error: 'email_id required' });
+      const normAction = normalizeAction(action);
+      const normDraft = normalizeDraft(normAction, 'Thanks for your email — noted.');
+      await pool.query(
+        `INSERT INTO proposals (email_id, proposed_action, rationale, draft_text, confidence)
+         VALUES ($1,$2,$3,$4,$5)`,
+        [email_id, normAction, 'debug: pipeline test', normDraft, 0.9]
+      );
+      res.json({ ok: true });
+    } catch (e) {
+      console.error('PROPOSE-DEBUG ERROR:', e);
+      res.status(500).json({ ok: false, error: 'propose_debug_error' });
+    }
+  });
 
-  const { rows } = await pool.query(`SELECT * FROM approvals WHERE proposal_id=$1`, [proposal_id]);
-  const a = rows[0];
-  if (!a || a.status !== 'approved') return res.status(403).json({ error: 'not approved' });
-  if (a.token !== token) return res.status(403).json({ error: 'bad token' });
-  if (a.expires_at && new Date(a.expires_at) < new Date())
-    return res.status(403).json({ error: 'token expired' });
+  // Approve quickly from browser
+  router.get('/approve-debug', async (req, res) => {
+    const { proposal_id, decision = 'approved' } = req.query;
+    if (!proposal_id) return res.status(400).json({ error: 'proposal_id required' });
+    await pool.query('BEGIN');
+    try {
+      await pool.query(
+        `INSERT INTO approvals (proposal_id, status, decided_by, decided_at)
+         VALUES ($1,$2,$3, now())
+         ON CONFLICT (proposal_id) DO UPDATE
+         SET status=EXCLUDED.status, decided_by=EXCLUDED.decided_by, decided_at=EXCLUDED.decided_at`,
+        [proposal_id, decision, 'owner']
+      );
+      let token = null;
+      if (decision === 'approved') {
+        token = crypto.randomBytes(24).toString('hex');
+        const exp = new Date(Date.now() + 15 * 60 * 1000);
+        await pool.query(
+          `UPDATE approvals SET token=$1, expires_at=$2 WHERE proposal_id=$3`,
+          [token, exp, proposal_id]
+        );
+      }
+      await pool.query('COMMIT');
+      res.json({ ok: true, token });
+    } catch (e) {
+      await pool.query('ROLLBACK');
+      console.error('APPROVE-DEBUG ERROR:', e);
+      res.status(500).json({ ok: false, error: 'approve_debug_error' });
+    }
+  });
 
-  await pool.query(`UPDATE approvals SET token=NULL, expires_at=NULL WHERE proposal_id=$1`, [proposal_id]);
-  res.json({ ok: true, simulated: true });
-});
+  // Execute quickly from browser
+  router.get('/execute-debug', async (req, res) => {
+    const { proposal_id, token } = req.query;
+    if (!proposal_id || !token) return res.status(400).json({ error: 'proposal_id and token required' });
+    const { rows } = await pool.query(`SELECT * FROM approvals WHERE proposal_id=$1`, [proposal_id]);
+    const a = rows[0];
+    if (!a || a.status !== 'approved') return res.status(403).json({ error: 'not approved' });
+    if (a.token !== token) return res.status(403).json({ error: 'bad token' });
+    if (a.expires_at && new Date(a.expires_at) < new Date())
+      return res.status(403).json({ error: 'token expired' });
+    await pool.query(`UPDATE approvals SET token=NULL, expires_at=NULL WHERE proposal_id=$1`, [proposal_id]);
+    res.json({ ok: true, simulated: true });
+  });
+}
 
 module.exports = router;
