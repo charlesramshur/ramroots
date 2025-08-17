@@ -69,7 +69,7 @@ router.all('/setup', async (_req, res) => {
   }
 });
 
-// ------------ Core endpoints ------------
+// ------------ Core helpers ------------
 function checkToolAuth(req, res) {
   const key = process.env.RAMROOT_API_KEY;
   if (!key) return true; // skip if not set yet
@@ -79,17 +79,37 @@ function checkToolAuth(req, res) {
   return true;
 }
 
+function normalizeAction(a) {
+  return String(a || '').toLowerCase().trim();
+}
+
+function normalizeDraft(action, draft) {
+  // Only keep draft for replies; coerce '', 'undefined', null to null
+  if (action !== 'reply') return null;
+  const raw = draft == null ? '' : String(draft).trim();
+  if (!raw) return null;
+  if (raw.toLowerCase() === 'undefined') return null;
+  return raw;
+}
+
+// ------------ Core endpoints ------------
+
 // Create a proposal (Relevance will call this via POST)
 router.post('/propose', async (req, res) => {
   if (!checkToolAuth(req, res)) return;
   try {
-    const { email_id, proposed_action, rationale, draft_text = null, confidence } = req.body || {};
-    if (!email_id || !proposed_action || !rationale || confidence == null)
+    let { email_id, proposed_action, rationale, draft_text = null, confidence } = req.body || {};
+    if (!email_id || !proposed_action || !rationale || confidence == null) {
       return res.status(400).json({ error: 'missing fields' });
+    }
+
+    const action = normalizeAction(proposed_action);
+    const normDraft = normalizeDraft(action, draft_text);
+
     await pool.query(
       `INSERT INTO proposals (email_id, proposed_action, rationale, draft_text, confidence)
        VALUES ($1,$2,$3,$4,$5)`,
-      [email_id, proposed_action, rationale, draft_text, confidence]
+      [email_id, action, rationale, normDraft, confidence]
     );
     res.json({ ok: true });
   } catch (e) {
@@ -124,8 +144,9 @@ router.post('/approve', async (req, res) => {
 
   await pool.query('BEGIN');
   try {
-    if (draftText)
+    if (draftText) {
       await pool.query(`UPDATE proposals SET draft_text=$1 WHERE id=$2`, [draftText, proposalId]);
+    }
 
     await pool.query(
       `INSERT INTO approvals (proposal_id, status, decided_by, decided_at)
@@ -193,10 +214,14 @@ router.get('/propose-debug', async (req, res) => {
   try {
     const { email_id, action = 'label' } = req.query;
     if (!email_id) return res.status(400).json({ error: 'email_id required' });
+
+    const normAction = normalizeAction(action);
+    const normDraft = normalizeDraft(normAction, 'Thanks for your email — noted.');
+
     await pool.query(
       `INSERT INTO proposals (email_id, proposed_action, rationale, draft_text, confidence)
        VALUES ($1,$2,$3,$4,$5)`,
-      [email_id, action, 'debug: pipeline test', 'Thanks for your email — noted.', 0.9]
+      [email_id, normAction, 'debug: pipeline test', normDraft, 0.9]
     );
     res.json({ ok: true });
   } catch (e) {
@@ -209,6 +234,7 @@ router.get('/propose-debug', async (req, res) => {
 router.get('/approve-debug', async (req, res) => {
   const { proposal_id, decision = 'approved' } = req.query;
   if (!proposal_id) return res.status(400).json({ error: 'proposal_id required' });
+
   await pool.query('BEGIN');
   try {
     await pool.query(
@@ -218,6 +244,7 @@ router.get('/approve-debug', async (req, res) => {
        SET status=EXCLUDED.status, decided_by=EXCLUDED.decided_by, decided_at=EXCLUDED.decided_at`,
       [proposal_id, decision, 'owner']
     );
+
     let token = null;
     if (decision === 'approved') {
       token = crypto.randomBytes(24).toString('hex');
@@ -240,12 +267,14 @@ router.get('/approve-debug', async (req, res) => {
 router.get('/execute-debug', async (req, res) => {
   const { proposal_id, token } = req.query;
   if (!proposal_id || !token) return res.status(400).json({ error: 'proposal_id and token required' });
+
   const { rows } = await pool.query(`SELECT * FROM approvals WHERE proposal_id=$1`, [proposal_id]);
   const a = rows[0];
   if (!a || a.status !== 'approved') return res.status(403).json({ error: 'not approved' });
   if (a.token !== token) return res.status(403).json({ error: 'bad token' });
   if (a.expires_at && new Date(a.expires_at) < new Date())
     return res.status(403).json({ error: 'token expired' });
+
   await pool.query(`UPDATE approvals SET token=NULL, expires_at=NULL WHERE proposal_id=$1`, [proposal_id]);
   res.json({ ok: true, simulated: true });
 });
