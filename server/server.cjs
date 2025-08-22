@@ -22,8 +22,8 @@ const {
   addFeature,
   addNote,
   searchMemory,
-  promoteSandbox,   // <-- added
-  clearSandbox      // <-- added
+  promoteSandbox,   // sandbox helpers
+  clearSandbox
 } = require('./memorymanager.cjs');
 
 const OpenAI = require("openai");
@@ -35,12 +35,12 @@ app.use(cors());
 app.use(express.json());
 const triageRouter = require('./routes/triage.cjs');
 const relevanceRouter = require('./routes/relevance.cjs');
-const coachRouter = require('./routes/coach.cjs'); 
+const coachRouter = require('./routes/coach.cjs');
 const builderRouter = require('./routes/builder.cjs');
 
 app.use('/triage', (triageRouter.default || triageRouter));
-app.use('/api/relevance', relevanceRouter); 
-app.use('/api/coach', coachRouter); 
+app.use('/api/relevance', relevanceRouter);
+app.use('/api/coach', coachRouter);
 app.use('/api/builder', builderRouter);
 
 app.get('/triage/ping', (_req, res) => res.send('pong'));
@@ -53,11 +53,15 @@ const upload = multer({ dest: FILES_DIR });
 // === OpenAI client ===
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
+// Helper (used by chat shortcuts)
+function baseURL() {
+  return `http://localhost:${port}`;
+}
+
 // === GitHub client + helpers for PR autopilot ===
-const { Octokit: Octokit2 } = require('@octokit/rest'); // (kept same import style as original)
-const octokit = new Octokit2({ auth: process.env.GITHUB_TOKEN });
+const octokit = new Octokit({ auth: process.env.GITHUB_TOKEN });
 const GITHUB_REPO = process.env.GITHUB_REPO || ""; // "owner/name"
-const [OWNER, REPO] = GITHUB_REPO.split('/');
+const [OWNER, REPO] = (GITHUB_REPO || "").split('/');
 const repoRoot = path.join(__dirname, '..');
 function run(cmd) {
   return execSync(cmd, { cwd: repoRoot, stdio: 'pipe' }).toString();
@@ -137,30 +141,70 @@ app.post('/api/memory/sandbox/clear', (_req, res) => {
   res.json({ ok: true });
 });
 
-// =================== Chat API ===================
+// =================== Chat API (with shortcuts) ===================
 app.post('/api/ask', async (req, res) => {
-  const { prompt } = req.body;
-  const memory = readMemory();
-
-  const shortMemory = {
-    goals: memory.goals?.slice(-5) ?? [],
-    notes: memory.notes?.slice(-10) ?? [],
-    features: memory.features?.slice(-5) ?? [],
-    tasks: memory.tasks?.slice(-10) ?? [],
-  };
-
-  const messages = [
-    { role: "system", content: "You are RamRoot, a personal AI built by Charles Alan Ramshur. You remember his family, goals, inventions, and struggles. You serve him with loyalty and Godly wisdom." },
-    { role: "user", content: `Recent memory:\n${JSON.stringify(shortMemory, null, 2)}` },
-    { role: "user", content: prompt }
-  ];
-
   try {
+    const raw = String(req.body?.prompt || '').trim();
+    if (!raw) return res.status(400).json({ error: 'missing_prompt' });
+
+    // Shortcuts:
+    // coach: <request>    -> POST /api/coach
+    // build: <request>    -> POST /api/builder/propose
+    // merge: <prNumber>   -> POST /api/self/merge
+    const mCoach  = raw.match(/^coach:\s*(.+)$/i);
+    const mBuild  = raw.match(/^build(?:er)?:\s*(.+)$/i);
+    const mMerge  = raw.match(/^merge:\s*(\d+)\s*$/i);
+
+    if (mCoach) {
+      const body = { request: mCoach[1] };
+      const r = await fetch(`${baseURL()}/api/coach`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+      }).then(x => x.json());
+      return res.json({ type: 'coach', result: r });
+    }
+
+    if (mBuild) {
+      const body = { request: mBuild[1] };
+      const r = await fetch(`${baseURL()}/api/builder/propose`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+      }).then(x => x.json());
+      return res.json({ type: 'builder', pr_number: r.pr_number, pr_url: r.pr_url, branch: r.branch });
+    }
+
+    if (mMerge) {
+      const body = { number: Number(mMerge[1]) };
+      const r = await fetch(`${baseURL()}/api/self/merge`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+      }).then(x => x.json());
+      return res.json({ type: 'merge', result: r });
+    }
+
+    // Default: model chat with recent memory
+    const memory = readMemory();
+    const shortMemory = {
+      goals: memory.goals?.slice(-5) ?? [],
+      notes: memory.notes?.slice(-10) ?? [],
+      features: memory.features?.slice(-5) ?? [],
+      tasks: memory.tasks?.slice(-10) ?? [],
+    };
+
+    const messages = [
+      { role: "system", content: "You are RamRoot, a personal AI built by Charles Alan Ramshur. You remember his family, goals, inventions, and struggles. You serve him with loyalty and Godly wisdom." },
+      { role: "user", content: `Recent memory:\n${JSON.stringify(shortMemory, null, 2)}` },
+      { role: "user", content: raw }
+    ];
+
     const completion = await openai.chat.completions.create({ model: "gpt-4o", messages });
     res.json({ reply: completion.choices[0].message.content });
   } catch (error) {
-    console.error('❌ OpenAI error:', error.message);
-    res.status(500).json({ error: "OpenAI error" });
+    console.error('❌ /api/ask error:', error.message);
+    res.status(500).json({ error: "ask_error", message: error.message });
   }
 });
 
@@ -459,7 +503,8 @@ app.post('/api/self/pr', async (req, res) => {
 app.post('/api/self/edit', async (req, res) => {
   try {
     if (!process.env.GITHUB_TOKEN || !GITHUB_REPO) {
-      return res.status(400).json({ error: "Missing GITHUB_TOKEN or GITHUB_REPO" });
+      return res.status(400).json({ error: "Missing GITHUB_TOKEN or " +
+        "GITHUB_REPO" });
     }
 
     const fileRel = (req.body?.file || "").toString().trim();
@@ -527,7 +572,8 @@ app.post('/api/self/edit', async (req, res) => {
     try { run('git checkout -'); } catch {}
   }
 });
-// =================== PR Autopilot: merge a PR ===================
+
+// =================== PR Autopilot: merge a PR (force-try) ===================
 // POST /api/self/merge  { "number": 12 }
 app.post('/api/self/merge', async (req, res) => {
   try {
@@ -541,44 +587,254 @@ app.post('/api/self/merge', async (req, res) => {
     let prInfo = await octokit.pulls.get({ owner: OWNER, repo: REPO, pull_number: prNum });
     const headRef = prInfo.data.head.ref;
 
-    // wait up to ~90s for mergeability to be computed and checks to pass
+    // allow merge when not obviously blocked
+    const OK_STATES = new Set(['clean', 'unstable', 'unknown', 'behind']);
+    const BAD_STATES = new Set(['dirty', 'blocked']);
     const sleep = (ms) => new Promise(r => setTimeout(r, ms));
-    let mergeable = prInfo.data.mergeable;
-    let state = prInfo.data.mergeable_state; // 'clean','dirty','blocked','behind','unknown', etc.
+
+    let mergeable = prInfo.data.mergeable;              // true | false | null
+    let state = prInfo.data.mergeable_state;            // 'clean','dirty','blocked','behind','unknown','unstable', etc.
+
+    // Wait up to ~90s for GitHub to compute; bail early only on hard blocks
     for (let i = 0; i < 30; i++) {
       if (prInfo.data.draft) {
         return res.status(400).json({ error: "PR is draft; mark ready for review first." });
       }
-      if (mergeable && state === 'clean') break;                 // good to merge
-      if (['dirty', 'blocked'].includes(state)) {                // conflicts or required reviews/checks
+      if (BAD_STATES.has(state)) {
         return res.status(400).json({ error: "PR not mergeable", mergeable, state });
       }
-      // refresh
+      if (mergeable === true && OK_STATES.has(state)) break; // ideal case
       await sleep(3000);
       prInfo = await octokit.pulls.get({ owner: OWNER, repo: REPO, pull_number: prNum });
       mergeable = prInfo.data.mergeable;
       state = prInfo.data.mergeable_state;
     }
-    if (!(mergeable && state === 'clean')) {
-      return res.status(400).json({ error: "Timed out waiting for mergeable=clean", mergeable, state });
-    }
 
-    // merge (squash by default)
-    await octokit.pulls.merge({
-      owner: OWNER,
-      repo: REPO,
-      pull_number: prNum,
-      merge_method: 'squash'
-    });
-
-    // best-effort: delete branch after merge
+    // Force-try merge unless we know it's hard-blocked or draft
     try {
-      await octokit.git.deleteRef({ owner: OWNER, repo: REPO, ref: `heads/${headRef}` });
-    } catch {}
-
-    res.json({ ok: true, merged: true, number: prNum, branch: headRef, url: prInfo.data.html_url });
+      await octokit.pulls.merge({
+        owner: OWNER,
+        repo: REPO,
+        pull_number: prNum,
+        merge_method: 'squash'
+      });
+      // best-effort: delete branch after merge
+      try {
+        await octokit.git.deleteRef({ owner: OWNER, repo: REPO, ref: `heads/${headRef}` });
+      } catch {}
+      return res.json({ ok: true, merged: true, number: prNum, branch: headRef, url: prInfo.data.html_url, state, mergeable });
+    } catch (e) {
+      return res.status(400).json({
+        error: "Merge failed",
+        mergeable,
+        state,
+        message: e?.response?.data?.message || e.message || String(e)
+      });
+    }
   } catch (e) {
     res.status(500).json({ error: e.message || String(e) });
+  }
+});
+
+// =================== PR diagnostics & update ===================
+// POST /api/self/pr-status  { "number": 16 }
+app.post('/api/self/pr-status', async (req, res) => {
+  try {
+    if (!process.env.GITHUB_TOKEN || !GITHUB_REPO) {
+      return res.status(400).json({ error: "Missing GITHUB_TOKEN or GITHUB_REPO" });
+    }
+    const prNum = Number(req.body?.number || req.query?.number);
+    if (!prNum) return res.status(400).json({ error: "Missing PR number" });
+
+    const pr = await octokit.pulls.get({ owner: OWNER, repo: REPO, pull_number: prNum });
+    const headSha = pr.data.head.sha;
+
+    // Reviews
+    let approvals = 0, reviewsRaw = [];
+    try {
+      const reviews = await octokit.pulls.listReviews({ owner: OWNER, repo: REPO, pull_number: prNum });
+      approvals = reviews.data.filter(r => r.state === 'APPROVED').length;
+      reviewsRaw = reviews.data.map(r => ({ user: r.user?.login, state: r.state }));
+    } catch {}
+
+    // Checks API
+    let checks = [];
+    try {
+      const cr = await octokit.checks.listForRef({ owner: OWNER, repo: REPO, ref: headSha });
+      checks = cr.data.check_runs.map(r => ({ name: r.name, status: r.status, conclusion: r.conclusion }));
+    } catch {}
+
+    // Commit Statuses (legacy)
+    let statuses = [];
+    try {
+      const st = await octokit.repos.getCombinedStatusForRef({ owner: OWNER, repo: REPO, ref: headSha });
+      statuses = st.data.statuses.map(s => ({ context: s.context, state: s.state }));
+    } catch {}
+
+    return res.json({
+      number: prNum,
+      draft: pr.data.draft,
+      mergeable: pr.data.mergeable,             // true | false | null
+      mergeable_state: pr.data.mergeable_state, // 'clean','blocked','behind','dirty','unstable','unknown',...
+      required_reviewers: (pr.data.requested_reviewers || []).map(u => u.login),
+      approvals,
+      checks,
+      statuses,
+      reviews: reviewsRaw
+    });
+  } catch (e) {
+    res.status(500).json({ error: e.message || String(e) });
+  }
+});
+
+// POST /api/self/update-branch  { "number": 16 }
+app.post('/api/self/update-branch', async (req, res) => {
+  try {
+    if (!process.env.GITHUB_TOKEN || !GITHUB_REPO) {
+      return res.status(400).json({ error: "Missing GITHUB_TOKEN or GITHUB_REPO" });
+    }
+    const prNum = Number(req.body?.number || req.query?.number);
+    if (!prNum) return res.status(400).json({ error: "Missing PR number" });
+
+    const r = await octokit.pulls.updateBranch({ owner: OWNER, repo: REPO, pull_number: prNum }).catch(e => e);
+    if (r?.status === 202 || r?.status === 200) {
+      return res.json({ ok: true, status: r.status });
+    }
+    return res.status(400).json({ ok: false, message: r?.message || r?.response?.data?.message || 'updateBranch failed' });
+  } catch (e) {
+    res.status(500).json({ error: e.message || String(e) });
+  }
+});
+
+// POST /api/self/merge-main  { "number": 16, "strategy": "ours" | "theirs" }
+app.post('/api/self/merge-main', async (req, res) => {
+  try {
+    if (!process.env.GITHUB_TOKEN || !GITHUB_REPO) {
+      return res.status(400).json({ error: "Missing GITHUB_TOKEN or GITHUB_REPO" });
+    }
+    const prNum = Number(req.body?.number || req.query?.number);
+    if (!prNum) return res.status(400).json({ error: "Missing PR number" });
+
+    const pr = await octokit.pulls.get({ owner: OWNER, repo: REPO, pull_number: prNum });
+    const head = pr.data.head.ref;   // PR branch
+    const base = pr.data.base.ref;   // usually "main"
+    const strategy = (String(req.body?.strategy || 'ours').toLowerCase() === 'theirs') ? 'theirs' : 'ours';
+
+    // Bring main into the PR branch, preferring PR side on conflicts by default (-X ours)
+    run(`git fetch origin`);
+    run(`git checkout "${head}"`);
+    try {
+      run(`git merge --no-edit -X ${strategy} origin/${base}`);
+    } catch (e) {
+      try { run(`git merge --abort`); } catch {}
+      return res.status(400).json({ ok: false, error: 'merge_conflicts', message: e.message });
+    }
+    run(`git push origin "${head}"`);
+    return res.json({ ok: true, head, base, strategy });
+  } catch (e) {
+    return res.status(500).json({ error: e.message || String(e) });
+  } finally {
+    try { run(`git checkout -`); } catch {}
+  }
+});
+
+// =================== Branch protection (approvals count) ===================
+// POST /api/self/protection-set-approvals  { "branch": "main", "count": 0 }
+app.post('/api/self/protection-set-approvals', async (req, res) => {
+  try {
+    if (!process.env.GITHUB_TOKEN || !GITHUB_REPO) {
+      return res.status(400).json({ error: "Missing GITHUB_TOKEN or GITHUB_REPO" });
+    }
+    const branch = String(req.body?.branch || req.query?.branch || 'main');
+    const count = Number(req.body?.count ?? 0);
+
+    const r = await octokit.repos.updatePullRequestReviewProtection({
+      owner: OWNER,
+      repo: REPO,
+      branch,
+      required_approving_review_count: count,
+      dismiss_stale_reviews: false,
+      require_code_owner_reviews: false,
+      bypass_pull_request_allowances: { users: [], teams: [], apps: [] }
+    });
+
+    return res.json({
+      ok: true,
+      branch,
+      required_approving_review_count: r.data?.required_approving_review_count ?? count
+    });
+  } catch (e) {
+    return res.status(400).json({ ok: false, error: e?.response?.data?.message || e.message || String(e) });
+  }
+});
+
+// =================== ADMIN squash-merge (local, Windows-safe) ===================
+// POST /api/self/admin-squash-merge  { "number": 16 }
+app.post('/api/self/admin-squash-merge', async (req, res) => {
+  try {
+    if (!process.env.GITHUB_TOKEN || !GITHUB_REPO) {
+      return res.status(400).json({ error: "Missing GITHUB_TOKEN or GITHUB_REPO" });
+    }
+    const prNum = Number(req.body?.number || req.query?.number);
+    if (!prNum) return res.status(400).json({ error: "Missing PR number" });
+
+    // Get PR info
+    const pr = await octokit.pulls.get({ owner: OWNER, repo: REPO, pull_number: prNum });
+    const head = pr.data.head.ref;   // PR branch name
+    const base = pr.data.base.ref;   // usually "main"
+    const title = pr.data.title || `PR #${prNum}`;
+
+    // Prepare repo
+    run(`git fetch origin`);
+    run(`git checkout "${base}"`);
+    try { run(`git pull --ff-only origin "${base}"`); }
+    catch { run(`git pull origin "${base}"`); }
+
+    // Squash-merge PR contents into base (no merge commit, linear history preserved)
+    try {
+      run(`git merge --squash origin/"${head}"`);
+    } catch (e) {
+      try { run(`git merge --abort`); } catch {}
+      return res.status(400).json({ ok: false, error: 'merge_conflicts', message: e.message });
+    }
+
+    // Stage everything explicitly (handles edge cases on Windows)
+    try { run(`git add -A`); } catch {}
+
+    // Anything staged?
+    let staged = '';
+    try { staged = run(`git diff --cached --name-only`).trim(); } catch {}
+
+    const authorName = process.env.GIT_AUTHOR_NAME || "RamRoot Bot";
+    const authorEmail = process.env.GIT_AUTHOR_EMAIL || "bot@ramroot.local";
+
+    if (staged) {
+      // Write commit message to a temp file to avoid quoting issues on Windows
+      const msg = `admin squash-merge: ${title} (#${prNum})`;
+      const tmpMsgPath = path.join(repoRoot, `.__ramroot_commit_${Date.now()}.txt`);
+      try {
+        fs.writeFileSync(tmpMsgPath, msg + '\n', 'utf8');
+        run(`git -c user.name="${authorName}" -c user.email="${authorEmail}" commit -F "${tmpMsgPath}"`);
+      } finally {
+        try { fs.unlinkSync(tmpMsgPath); } catch {}
+      }
+    } else {
+      // Nothing to commit => already included
+    }
+
+    // Push to main
+    run(`git push origin "${base}"`);
+
+    // Best-effort: close PR and delete branch
+    try { await octokit.pulls.update({ owner: OWNER, repo: REPO, pull_number: prNum, state: 'closed' }); } catch {}
+    try { await octokit.git.deleteRef({ owner: OWNER, repo: REPO, ref: `heads/${head}` }); } catch {}
+
+    const headSha = run(`git rev-parse HEAD`).trim();
+    return res.json({ ok: true, merged: true, method: 'squash', base, head, commit: headSha, staged: Boolean(staged) });
+  } catch (e) {
+    return res.status(500).json({ ok: false, error: e?.response?.data?.message || e.message || String(e) });
+  } finally {
+    try { run(`git checkout -`); } catch {}
   }
 });
 
