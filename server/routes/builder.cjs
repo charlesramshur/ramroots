@@ -19,6 +19,7 @@ function baseURL() {
 function guardFiles(files) {
   const denied = [/^\.env/i, /^vercel\./i, /^\.github\/workflows\//i];
   const allowedRoots = ['src/', 'server/', 'public/', 'docs/'];
+  const allowExact = new Set(['README.md','CHANGELOG.md']);
   if (!Array.isArray(files)) return [];
   let keep = files.filter(f =>
     f && typeof f.path === 'string' && typeof f.content === 'string' &&
