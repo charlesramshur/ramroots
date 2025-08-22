@@ -1,17 +1,19 @@
 // server/server.cjs
 const express = require('express');
 const cors = require('cors');
-require('dotenv').config(); // loads server/.env
-
 const fs = require('fs');
 const path = require('path');
+
+// === Load env files explicitly ===
+// 1) Secrets from server/.env (authoritative)
+require('dotenv').config({ path: path.join(__dirname, '.env'), override: true });
+// 2) Root .env (only VITE_*), DO NOT override secrets
+require('dotenv').config({ path: path.join(__dirname, '..', '.env'), override: false });
+
 const multer = require('multer');
 const cheerio = require('cheerio');
 const { execSync } = require('child_process');
 const { Octokit } = require('@octokit/rest');
-
-// also load the root .env so your existing layout works
-require('dotenv').config({ path: path.join(__dirname, '..', '.env') });
 
 const {
   readMemory,
@@ -19,7 +21,9 @@ const {
   addGoal,
   addFeature,
   addNote,
-  searchMemory
+  searchMemory,
+  promoteSandbox,   // <-- added
+  clearSandbox      // <-- added
 } = require('./memorymanager.cjs');
 
 const OpenAI = require("openai");
@@ -30,7 +34,14 @@ const port = process.env.PORT || 5000;
 app.use(cors());
 app.use(express.json());
 const triageRouter = require('./routes/triage.cjs');
-app.use('/triage', triageRouter.default || triageRouter);
+const relevanceRouter = require('./routes/relevance.cjs');
+const coachRouter = require('./routes/coach.cjs'); 
+const builderRouter = require('./routes/builder.cjs');
+
+app.use('/triage', (triageRouter.default || triageRouter));
+app.use('/api/relevance', relevanceRouter); 
+app.use('/api/coach', coachRouter); 
+app.use('/api/builder', builderRouter);
 
 app.get('/triage/ping', (_req, res) => res.send('pong'));
 
@@ -43,7 +54,8 @@ const upload = multer({ dest: FILES_DIR });
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
 // === GitHub client + helpers for PR autopilot ===
-const octokit = new Octokit({ auth: process.env.GITHUB_TOKEN });
+const { Octokit: Octokit2 } = require('@octokit/rest'); // (kept same import style as original)
+const octokit = new Octokit2({ auth: process.env.GITHUB_TOKEN });
 const GITHUB_REPO = process.env.GITHUB_REPO || ""; // "owner/name"
 const [OWNER, REPO] = GITHUB_REPO.split('/');
 const repoRoot = path.join(__dirname, '..');
@@ -70,30 +82,59 @@ async function extractOneLine(question, passages) {
 }
 
 // =================== Memory APIs ===================
-app.get('/api/memory', (req, res) => res.json(readMemory()));
+function useSandbox(req) {
+  const v = String(req.query?.sandbox ?? '').toLowerCase();
+  return v === '1' || v === 'true';
+}
+
+app.get('/api/memory', (req, res) => {
+  const sandbox = useSandbox(req);
+  res.json(readMemory({ sandbox }));
+});
 
 app.get('/api/memory/search', (req, res) => {
   const keyword = req.query.keyword;
   if (!keyword) return res.status(400).json({ error: 'Keyword is required' });
-  res.json(searchMemory(keyword));
+  const sandbox = useSandbox(req);
+  res.json(searchMemory(keyword, { sandbox }));
 });
 
 app.post('/api/memory/goals', (req, res) => {
   const goal = req.body;
   if (!goal?.text) return res.status(400).json({ error: 'Goal must have text' });
-  addGoal(goal); res.status(201).json({ success: true });
+  const sandbox = useSandbox(req);
+  addGoal(goal, { sandbox });
+  res.status(201).json({ success: true, sandbox });
 });
 
 app.post('/api/memory/features', (req, res) => {
   const feature = req.body;
   if (!feature?.text) return res.status(400).json({ error: 'Feature must have text' });
-  addFeature(feature); res.status(201).json({ success: true });
+  const sandbox = useSandbox(req);
+  addFeature(feature, { sandbox });
+  res.status(201).json({ success: true, sandbox });
 });
 
 app.post('/api/memory/notes', (req, res) => {
   const note = req.body;
   if (!note?.text) return res.status(400).json({ error: 'Note must have text' });
-  addNote(note); res.status(201).json({ success: true });
+  const sandbox = useSandbox(req);
+  addNote(note, { sandbox });
+  res.status(201).json({ success: true, sandbox });
+});
+
+// Promote sandbox → live
+app.post('/api/memory/sandbox/promote', (_req, res) => {
+  const r = promoteSandbox();
+  if (!r.ok) return res.status(400).json(r);
+  res.json({ ok: true });
+});
+
+// Clear sandbox file
+app.post('/api/memory/sandbox/clear', (_req, res) => {
+  const r = clearSandbox();
+  if (!r.ok) return res.status(400).json(r);
+  res.json({ ok: true });
 });
 
 // =================== Chat API ===================
@@ -228,7 +269,7 @@ async function wikipediaInfoboxValue(title, keyRegexes) {
   let result = null;
   $('table.infobox tr').each((_, el) => {
     const th = $(el).find('th').first();
-       const td = $(el).find('td').first();
+    const td = $(el).find('td').first();
     if (!th.length || !td.length) return;
     const label = th.text().trim().toLowerCase();
     for (const re of keyRegexes) {
@@ -271,9 +312,9 @@ async function wikipediaAnswer(q) {
     const rel = await wikipediaRelated(chosenTitle);
     const relPick =
       rel.find(p => /(\d{1,2}(st|nd|rd|th)\s+president of the united states|american politician.*president)/i
-                      .test((p.description || '').toLowerCase())) ||
+        .test((p.description || '').toLowerCase())) ||
       rel.find(p => /(first lady of the united states|american politician)/i
-                      .test((p.description || '').toLowerCase())) ||
+        .test((p.description || '').toLowerCase())) ||
       rel[0];
     if (relPick?.title) chosenTitle = relPick.title || relPick.key || chosenTitle;
   }
@@ -487,7 +528,6 @@ app.post('/api/self/edit', async (req, res) => {
   }
 });
 // =================== PR Autopilot: merge a PR ===================
-// =================== PR Autopilot: merge a PR ===================
 // POST /api/self/merge  { "number": 12 }
 app.post('/api/self/merge', async (req, res) => {
   try {
@@ -542,7 +582,6 @@ app.post('/api/self/merge', async (req, res) => {
   }
 });
 
-
 // =================== Ops runner (safe allowlist) ===================
 const SAFE_OPS = {
   // Quick repo status
@@ -577,7 +616,7 @@ app.post('/api/self/ops', async (req, res) => {
 
 // =================== Health & Root ===================
 app.get('/api/health', (req, res) => res.status(200).json({ status: 'ok', time: new Date().toISOString() }));
-app.get('/', (req, res) => res.send('✅ RamRoot backend is running successfully.'));
+app.get('/', (req, res) => res.send('✅ RamRoot backend is running successfully - Builder edit test.'));
 
 app.listen(port, () => {
   console.log(`✅ RamRoot backend running on http://localhost:${port}`);
