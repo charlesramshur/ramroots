@@ -22,7 +22,7 @@ function guardFiles(files) {
   if (!Array.isArray(files)) return [];
   let keep = files.filter(f =>
     f && typeof f.path === 'string' && typeof f.content === 'string' &&
-    allowedRoots.some(r => f.path.startsWith(r)) &&
+    (allowedRoots.some(r => f.path.startsWith(r)) || allowExact.has(f.path)) &&
     !denied.some(rx => rx.test(f.path))
   ).slice(0, 15);
 
