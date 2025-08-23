@@ -3,7 +3,7 @@ const fs = require("fs");
 const path = require("path");
 const router = express.Router();
 function _adm(req,res,next){ const tok = process.env.ADMIN_TOKEN || ""; if (tok && req.get("x-admin-token") !== tok) return res.status(401).json({ ok:false, error:"unauthorized" }); next(); }
-router.use("/self/leads", _adm);
+router.use("/self", _adm);
 const LEADS_PATH = path.join(process.cwd(),"server","files","leads.json");
 function readLeads(){ try{ return JSON.parse(fs.readFileSync(LEADS_PATH,"utf8")); } catch{ return []; } }
 function writeLeads(a){ fs.mkdirSync(path.dirname(LEADS_PATH), { recursive:true }); fs.writeFileSync(LEADS_PATH, JSON.stringify(a,null,2)); }
