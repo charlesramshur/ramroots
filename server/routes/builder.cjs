@@ -1,178 +1,76 @@
-// server/routes/builder.cjs
-const express = require('express');
+﻿const express = require('express');
+const router = express.Router();
 const OpenAI = require('openai');
 const { memoryContext } = require('../engine/memory.cjs');
-const {
-  parseRepo, octo, createBranch, upsert, openPR, mergePR
-} = require('../agents/builder.cjs');
+const { parseRepo, octo, createBranch, upsert, openPR, mergePR } = require('../agents/builder.cjs');
 
-const router = express.Router();
 const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 const MODEL = process.env.OPENAI_MODEL || 'gpt-4o-mini';
 const BASE_BRANCH = process.env.GITHUB_DEFAULT_BRANCH || 'main';
+function baseURL(){ const port=process.env.PORT||'5000'; return http://localhost:; }
 
-function baseURL() {
-  const port = process.env.PORT || '5000';
-  return `http://localhost:${port}`;
+function guardFiles(files){
+  const denied=[/^\.env/i,/^vercel\./i,/^\.github\/workflows\//i];
+  const roots=['src/','server/','public/','docs/'];
+  if(!Array.isArray(files)) return [];
+  const keep = files.filter(f=> f && f.path && typeof f.content==='string' && roots.some(r=>f.path.startsWith(r)) && !denied.some(rx=>rx.test(f.path)) ).slice(0,15);
+  const total = keep.reduce((n,f)=> n + (f.content||'').split('\n').length, 0);
+  return total>2000 ? keep.slice(0, Math.max(1, Math.floor(2000/ Math.max(1, (keep[0]?.content||'').split('\n').length)))) : keep;
 }
 
-function guardFiles(files) {
-  const denied = [/^\.env/i, /^vercel\./i, /^\.github\/workflows\//i];
-  const allowedRoots = ['src/', 'server/', 'public/', 'docs/'];
-  const allowExact = new Set(['README.md','CHANGELOG.md']);
-  if (!Array.isArray(files)) return [];
-  let keep = files.filter(f =>
-    f && typeof f.path === 'string' && typeof f.content === 'string' &&
-    (allowedRoots.some(r => f.path.startsWith(r)) || allowExact.has(f.path)) &&
-    !denied.some(rx => rx.test(f.path))
-  ).slice(0, 15);
+router.post('/propose', async (req,res)=>{
+  try{
+    const request = String(req.body?.request||'').trim();
+    if(!request) return res.status(400).json({ error:'empty_request' });
 
-  // Cap total insertions ~2000 lines
-  let total = 0, capped = [];
-  for (const f of keep) {
-    const lines = (f.content || '').split('\n').length;
-    if (total + lines > 2000) break;
-    total += lines;
-    capped.push(f);
-  }
-  return capped;
-}
-
-// ---------- POST /api/builder/propose ----------
-router.post('/propose', async (req, res) => {
-  try {
-    const request = String(req.body?.request || '').trim();
-    if (!request) return res.status(400).json({ error: 'empty_request' });
-
-    // 1) Get a plan/spec from Coach
-    const coach = await fetch(`${baseURL()}/api/coach`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+    const coach = await fetch(${baseURL()}/api/coach, {
+      method:'POST', headers:{'Content-Type':'application/json'},
       body: JSON.stringify({ request })
-    }).then(r => r.json());
+    }).then(r=>r.json());
 
-    // 2) Ask model to emit exact files
-    const sys = `You are RamRoot's BUILDER. Reply ONLY with JSON like:
-{"files":[{"path":"src/...","content":"file contents"}]}`;
+    const sys = 'You are RamRoot\\'s BUILDER. Reply ONLY with JSON: {\"files\":[{\"path\":\"src/...\",\"content\":\"file contents\"}]}';
     const mem = memoryContext();
-    const user = `${mem}
-Plan:${JSON.stringify(coach)}
-Generate the minimal diffs to satisfy acceptance_criteria. Avoid huge boilerplate; use existing structure.`;
+    const user = ${mem}\nPlan:\nGenerate minimal diffs to satisfy acceptance_criteria. Avoid boilerplate.;
 
-    const out = await client.chat.completions.create({
-      model: MODEL, temperature: 0.1,
-      messages: [{ role: 'system', content: sys }, { role: 'user', content: user }]
-    });
-
-    let files = [];
-    try { files = JSON.parse(out.choices?.[0]?.message?.content || '{"files":[]}').files; }
-    catch { files = []; }
+    const out = await client.chat.completions.create({ model: MODEL, temperature: 0.1,
+      messages:[ {role:'system', content: sys}, {role:'user', content: user} ] });
+    let files=[]; try{ files = JSON.parse(out.choices?.[0]?.message?.content||'{\"files\":[]}').files; } catch{ files=[]; }
     files = guardFiles(files);
 
-    // --- Fallback: guarantee at least one changed file so PR always has a commit ---
-    if (!files || files.length === 0) {
-      files = [{
-        path: 'docs/ramroot-builder-test.md',
-        content:
-`# RamRoot Builder Test
-
-Request: ${request}
-
-This file is created by the Builder to ensure the PR contains at least one commit.
-Date: ${new Date().toISOString()}
-`
-      }];
-    }
-
-    // 3) Open PR with those files
     const { owner, repo } = parseRepo();
     const o = octo();
-    const branch = `ramroot/${Date.now()}`;
+    const branch = amroot/;
     await createBranch(o, owner, repo, BASE_BRANCH, branch);
-    for (const f of files) {
-      await upsert(o, owner, repo, branch, f.path, f.content);
-    }
-    const pr = await openPR(
-      o, owner, repo, BASE_BRANCH, branch,
-      `RamRoot: ${request}`,
-      `Auto-generated by Builder.\n\nPlan: ${JSON.stringify(coach, null, 2)}`
-    );
+    for(const f of files){ await upsert(o, owner, repo, branch, f.path, f.content); }
+    const pr = await openPR(o, owner, repo, BASE_BRANCH, branch, RamRoot: , Auto-generated by Builder.\n\nPlan: );
 
     res.json({ pr_number: pr.number, pr_url: pr.html_url, branch, files_count: files.length, coach });
-  } catch (e) {
-    console.error('builder propose error', e);
-    res.status(500).json({ error: 'builder_failed', message: String(e?.message || e) });
-  }
+  }catch(e){ console.error('builder propose error', e); res.status(500).json({ error:'builder_failed', message:String(e?.message||e) }); }
 });
 
-// Append a line to docs/decisions.md on merge
-async function appendDecision(o, owner, repo, title, pr) {
-  const path = 'docs/decisions.md';
-  const stamp = `- ${new Date().toISOString()} — ${title} ([#${pr.number}](${pr.html_url}))`;
-  let current = ''; let sha;
-  try {
+async function appendDecision(o, owner, repo, title, pr){
+  const path='docs/decisions.md';
+  const stamp = -  —  ([#]());
+  let current=''; let sha;
+  try{
     const { data } = await o.repos.getContent({ owner, repo, path, ref: BASE_BRANCH });
-    if (!Array.isArray(data)) { current = Buffer.from(data.content, 'base64').toString('utf8'); sha = data.sha; }
+    if(!Array.isArray(data)){ current = Buffer.from(data.content, 'base64').toString('utf8'); sha=data.sha; }
   } catch {}
-  const next = (current ? current + '\n' : '# Decisions\n\n') + stamp + '\n';
-  await o.repos.createOrUpdateFileContents({
-    owner, repo, path,
-    message: 'docs: log decision',
-    content: Buffer.from(next).toString('base64'),
-    branch: BASE_BRANCH,
-    sha
-  });
+  const next = (current? current + '\n' : '# Decisions\n\n') + stamp + '\n';
+  await o.repos.createOrUpdateFileContents({ owner, repo, path, message:'docs: log decision', content: Buffer.from(next).toString('base64'), branch: BASE_BRANCH, sha });
 }
 
-// ---------- POST /api/builder/merge ----------
-router.post('/merge', async (req, res) => {
-  try {
-    const pr_number = Number(req.body?.pr_number);
-    if (!pr_number) return res.status(400).json({ error: 'missing_pr_number' });
-
+router.post('/merge', async (req,res)=>{
+  try{
+    const pr_number = Number(req.body?.pr_number); if(!pr_number) return res.status(400).json({ error:'missing_pr_number' });
     const title = String(req.body?.title || 'Merged by RamRoot');
     const { owner, repo } = parseRepo();
     const o = octo();
-
     await mergePR(o, owner, repo, pr_number);
-    const pr = { number: pr_number, html_url: `https://github.com/${owner}/${repo}/pull/${pr_number}` };
-    try { await appendDecision(o, owner, repo, title, pr); } catch {}
-
-    res.json({ merged: true });
-  } catch (e) {
-    console.error('merge_failed', e);
-    res.status(500).json({ error: 'merge_failed', message: String(e?.message || e) });
-  }
-});
-
-// ---------- POST /api/builder/approve ----------
-// Body: { "pr_number": 13 }
-router.post('/approve', async (req, res) => {
-  try {
-    const pr_number = Number(req.body?.pr_number);
-    if (!pr_number) return res.status(400).json({ error: 'missing_pr_number' });
-
-    const { owner, repo } = parseRepo();
-    const o = octo();
-
-    // Mark ready for review if draft (best effort)
-    try {
-      const pr = await o.pulls.get({ owner, repo, pull_number: pr_number });
-      if (pr.data.draft) {
-        await o.pulls.update({ owner, repo, pull_number: pr_number, draft: false });
-      }
-    } catch {}
-
-    // Create an APPROVE review
-    await o.pulls.createReview({
-      owner, repo, pull_number: pr_number, event: 'APPROVE'
-    });
-
-    res.json({ ok: true, approved: true });
-  } catch (e) {
-    console.error('approve_failed', e);
-    res.status(500).json({ error: 'approve_failed', message: String(e?.message || e) });
-  }
+    const pr = { number: pr_number, html_url: https://github.com///pull/ };
+    await appendDecision(o, owner, repo, title, pr);
+    res.json({ merged:true });
+  }catch(e){ console.error('builder merge error', e); res.status(500).json({ error:'merge_failed', message:String(e?.message||e) }); }
 });
 
 module.exports = router;
