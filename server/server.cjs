@@ -37,6 +37,7 @@ const triageRouter = require('./routes/triage.cjs');
 const relevanceRouter = require('./routes/relevance.cjs');
 const coachRouter = require('./routes/coach.cjs');
 const builderRouter = require('./routes/builder.cjs');
+const prsRouter = require('./routes/prs.cjs');
 
 app.use('/triage', (triageRouter.default || triageRouter));
 app.use('/api/relevance', relevanceRouter);
