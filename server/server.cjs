@@ -42,6 +42,7 @@ const leadsRouter = require('./routes/leads.cjs');
 
 app.use('/triage', (triageRouter.default || triageRouter));
 app.use('/api/relevance', relevanceRouter);
+app.use('/api', leadsRouter);
 app.use('/api/coach', coachRouter);
 app.use('/api/builder', builderRouter);
 app.use('/api/self', prsRouter);
