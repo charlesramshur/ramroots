@@ -45,6 +45,7 @@ app.use('/api/relevance', relevanceRouter);
 app.use('/api/coach', coachRouter);
 app.use('/api/builder', builderRouter);
 app.use('/api/self', prsRouter);
+app.use('/api', leadsRouter);
 
 app.get('/triage/ping', (_req, res) => res.send('pong'));
 
