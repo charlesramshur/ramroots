@@ -1,4 +1,4 @@
-const express = require("express");
+﻿const express = require("express");
 const fs = require("fs");
 const path = require("path");
 const router = express.Router();
@@ -36,4 +36,12 @@ router.get('/self/leads.csv', (_req, res) => {
     ...arr.map(x => [x.id,x.email,x.name,x.note,x.createdAt].map(q).join(','))];
   res.type('text/csv').send(lines.join('\n'));
 });
-module.exports = router;
+router.get("/self/leads.csv",(_req,res)=>{
+  const arr = readLeads()
+    .sort((a,b)=>String(b.createdAt).localeCompare(String(a.createdAt)))
+    .slice(0,50);
+  const q = s => '"' + String(s ?? '').replace(/"/g,'""') + '"';
+  const lines = ["id,email,name,note,createdAt",
+    ...arr.map(x => [x.id,x.email,x.name,x.note,x.createdAt].map(q).join(","))];
+  res.type("text/csv").send(lines.join("\n"));
+});module.exports=router;
