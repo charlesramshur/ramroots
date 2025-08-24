@@ -1,17 +1,7 @@
-# Project Roadmap
+﻿# Roadmap
 
-## Phase 1: Research
-- Conduct market analysis
-- Gather user feedback
-
-## Phase 2: Development
-- Build MVP
-- Test with early adopters
-
-## Phase 3: Launch
-- Release to public
-- Gather post-launch feedback
-
-## Phase 4: Iteration
-- Implement user suggestions
-- Plan for future features
+- Ship MVP with persistent memory and a decisions log.
+- Harden relevance indexing and coach context quality.
+- Add connectors: Gmail/Calendar and Ancestry workflows.
+- Provide non-AI image editor with versioned edits.
+- Governance: permissions, logging, and background agent controls.
