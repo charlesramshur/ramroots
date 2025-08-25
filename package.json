@@ -8,7 +8,8 @@
                     "build":  "vite build",
                     "preview":  "vite preview",
                     "server":  "node server/server.cjs",
-                    "readme:update":  "node scripts/update-readme.mjs"
+                    "readme:update":  "node scripts/update-readme.mjs",
+                    "test:strict":  "node scripts/check-coach-strict.mjs"
                 },
     "dependencies":  {
                          "@octokit/rest":  "^22.0.0",
