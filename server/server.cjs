@@ -1,4 +1,4 @@
-// server/server.cjs
+﻿// server/server.cjs
 const express = require('express');
 const cors = require('cors');
 const fs = require('fs');
@@ -79,7 +79,7 @@ async function extractOneLine(question, passages) {
       model: "gpt-4o-mini",
       temperature: 0,
       messages: [
-        { role: "system", content: "Answer in ONE short line. Be specific. If it's a person, give full name and role; include start/inauguration date if present. If passages don’t contain the answer, reply exactly: I don’t have that from the sources." },
+        { role: "system", content: "Answer in ONE short line. Be specific. If it's a person, give full name and role; include start/inauguration date if present. If passages donâ€™t contain the answer, reply exactly: I donâ€™t have that from the sources." },
         { role: "user", content: `Question: ${question}\n\nPassages:\n${passages}\n\nOne-line answer:` }
       ],
     });
@@ -132,7 +132,7 @@ app.post('/api/memory/notes', (req, res) => {
   res.status(201).json({ success: true, sandbox });
 });
 
-// Promote sandbox → live
+// Promote sandbox â†’ live
 app.post('/api/memory/sandbox/promote', (_req, res) => {
   const r = promoteSandbox();
   if (!r.ok) return res.status(400).json(r);
@@ -208,7 +208,7 @@ app.post('/api/ask', async (req, res) => {
     const completion = await openai.chat.completions.create({ model: "gpt-4o", messages });
     res.json({ reply: completion.choices[0].message.content });
   } catch (error) {
-    console.error('❌ /api/ask error:', error.message);
+    console.error('âŒ /api/ask error:', error.message);
     res.status(500).json({ error: "ask_error", message: error.message });
   }
 });
@@ -332,7 +332,7 @@ async function wikipediaInfoboxValue(title, keyRegexes) {
   return result;
 }
 
-// Prefer the actual person; avoid “Miami Beach” when user just said “Miami”
+// Prefer the actual person; avoid â€œMiami Beachâ€ when user just said â€œMiamiâ€
 async function wikipediaAnswer(q) {
   const pages = await wikipediaSearchPages(q, 5);
   if (!pages.length) return { answer: "", sources: [] };
@@ -432,10 +432,10 @@ app.get('/api/knowledge', async (req, res) => {
 
     if (!answer) return res.status(404).json({ q, answer: "", sources: [], note: "No direct answer found" });
 
-    // 3) Compress to a clean one-liner (don’t overwrite with the guard sentence)
+    // 3) Compress to a clean one-liner (donâ€™t overwrite with the guard sentence)
     let final = "";
     try { final = await extractOneLine(q, answer); } catch {}
-    if (final && !/i don[’']t have that from the sources/i.test(final)) {
+    if (final && !/i don[â€™']t have that from the sources/i.test(final)) {
       return res.json({ q, answer: final, sources });
     }
     res.json({ q, answer, sources });
@@ -460,7 +460,7 @@ app.post('/api/self/pr', async (req, res) => {
       model: "gpt-4o-mini",
       temperature: 0,
       messages: [
-        { role: "system", content: "Create a minimal, safe change that moves the repo toward the task. Output a concise Markdown file (200–400 words) with any small code snippets. Write under docs/autopilot/ only." },
+        { role: "system", content: "Create a minimal, safe change that moves the repo toward the task. Output a concise Markdown file (200â€“400 words) with any small code snippets. Write under docs/autopilot/ only." },
         { role: "user", content: `Task: ${task}\n\nWrite the Markdown now.` }
       ],
     });
@@ -566,7 +566,7 @@ app.post('/api/self/edit', async (req, res) => {
       owner: OWNER, repo: REPO,
       title: message,
       head: branch, base: "main",
-      body: `Edited \`${fileRel}\`\n\n• find: \`${find}\`\n• replace: \`${replace}\``
+      body: `Edited \`${fileRel}\`\n\nâ€¢ find: \`${find}\`\nâ€¢ replace: \`${replace}\``
     });
 
     res.json({ ok: true, branch, pr: pr.data.html_url, file: fileRel });
@@ -877,8 +877,11 @@ app.post('/api/self/ops', async (req, res) => {
 
 // =================== Health & Root ===================
 app.get('/api/health', (req, res) => res.status(200).json({ status: 'ok', time: new Date().toISOString() }));
-app.get('/', (req, res) => res.send('✅ RamRoot backend is running successfully - Builder edit test.'));
+app.get('/', (req, res) => res.send('âœ… RamRoot backend is running successfully - Builder edit test.'));
 
 app.listen(port, () => {
-  console.log(`✅ RamRoot backend running on http://localhost:${port}`);
+  console.log(`âœ… RamRoot backend running on http://localhost:${port}`);
 });
+
+const coachStrictRouter = require('./routes/coach_strict.cjs');
+app.use('/api/coach/strict', coachStrictRouter);
