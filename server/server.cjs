@@ -1,4 +1,5 @@
-﻿// server/server.cjs
+﻿const webRouter = require('./routes/web.cjs');
+// server/server.cjs
 const express = require('express');
 const cors = require('cors');
 const fs = require('fs');
@@ -42,11 +43,11 @@ const leadsRouter = require('./routes/leads.cjs');
 
 app.use('/triage', (triageRouter.default || triageRouter));
 app.use('/api/relevance', relevanceRouter);
-app.use('/api', leadsRouter);
-app.use('/api/coach', coachRouter);
-app.use('/api/builder', builderRouter);
-app.use('/api/self', prsRouter);
-app.use('/api', leadsRouter);
+app.use('/api', (leadsRouter.default || leadsRouter));
+app.use('/api/coach', (coachRouter.default || coachRouter));
+app.use('/api/builder', (builderRouter.default || builderRouter));
+app.use('/api/self', (prsRouter.default || prsRouter));
+app.use('/api', (leadsRouter.default || leadsRouter));
 
 app.get('/triage/ping', (_req, res) => res.send('pong'));
 
@@ -885,3 +886,17 @@ app.listen(port, () => {
 
 const coachStrictRouter = require('./routes/coach_strict.cjs');
 app.use('/api/coach/strict', coachStrictRouter);
+
+const chatRouter = require('./routes/chat.cjs');
+app.use('/api', require('./routes/chat.cjs'));
+
+
+
+// mount chat at /api so POST /api/chat works
+app.use('/api', require('./routes/chat.cjs'));
+
+
+
+
+app.use('/api', (webRouter.default || webRouter));
+
